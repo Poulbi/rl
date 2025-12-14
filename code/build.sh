@@ -17,9 +17,10 @@ release=0
 # Targets
 hash=0
 samples=0
+cuda=0
 
 # Default
-[ "$#" = 0 ] && hash=1
+[ "$#" = 0 ] && cuda=1
 
 for Arg in "$@"; do eval "$Arg=1"; done
 # Exclusive flags
@@ -41,8 +42,10 @@ CU_Compile()
 
  Flags="$Flags
  -I$ScriptDirectory -DOS_LINUX=1 -DAOC_INTERNAL=1
- -arch sm_50
+ -gencode arch=compute_60,code=sm_60
+ -gencode arch=compute_50,code=sm_50
  "
+
  WarningFlags="
  -diag-suppress 1143
  -diag-suppress 2464
@@ -124,7 +127,7 @@ Strip()
  printf '%s %s' "$Source" "$Out"
 }
 
-[ "$hash"    = 1 ] && C_Compile  $(Strip ./hash/hash.c)
+[ "$hash" = 1 ] && C_Compile $(Strip ./hash/hash.c)
 if [ "$samples" = 1 ]
 then
 	ls lib
@@ -132,6 +135,7 @@ then
  CU_Compile $(Strip ./lib/cuda-samples/deviceQueryDrv.cpp) -lcuda
  CU_Compile $(Strip ./lib/cuda-samples/topologyQuery.cu)
 fi
+[ "$cuda" = 1 ] && CU_Compile $(Strip ./cuda/foo.cu)
 
 if [ "$DidWork" = 0 ]
 then
