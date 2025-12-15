@@ -44,7 +44,8 @@ internal void DrawText(app_offscreen_buffer *Buffer, app_font *Font, f32 HeightP
 internal void DrawTextInBox(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font, 
                             str8 Text, f32 HeightPx, u32 Color,
                             v2 BoxMin, v2 BoxMax, b32 Centered);
-
+internal void DrawTextFormat(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font, 
+                             f32 X, f32 Y, u32 Color, char *Format, ...);
 #endif //HANDMADE_FONT_H
 
 #ifdef HANDMADE_FONT_IMPLEMENTATION
@@ -217,7 +218,7 @@ DrawTextInBox(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font,
               str8 Text, f32 HeightPx, u32 Color,
               v2 BoxMin, v2 BoxMax, b32 Centered)
 {
-    BeginScratch(Arena);
+    umm BackPos = BeginScratch(Arena);
     s32 *CharacterPixelWidths = PushArray(Arena, s32, Text.Size);
     u32 *WrapPositions = PushArray(Arena, u32, 0);
     u32 WrapPositionsCount = 0;
@@ -378,7 +379,24 @@ DrawTextInBox(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font,
                  TextOffset, Color, false); 
     }
     
-    EndScratch(Arena);
+    EndScratch(Arena, BackPos);
+}
+
+internal void
+DrawTextFormat(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font, 
+               f32 X, f32 Y, u32 Color, char *Format, ...)
+{
+    umm BackPos = BeginScratch(Arena);
+    
+    str8 Text = {0};
+    Text.Data = PushArray(Arena, u8, 256);
+    va_list Args;
+    va_start(Args, Format);
+    Text.Size = (umm)stbsp_vsprintf((char *)Text.Data, Format, Args);
+    
+    DrawText(Buffer, Font, 16.0f, Text, v2{X, Y}, Color, false);
+    
+    EndScratch(Arena, BackPos);
 }
 
 #endif //HANDMADE_FONT_IMPLEMENTATION

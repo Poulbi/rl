@@ -20,14 +20,15 @@ arena *GetScratch()
     return Arena;
 }
 
-void BeginScratch(arena *Arena)
+umm BeginScratch(arena *Arena)
 {
-    Arena->BackPos = Arena->Pos;
+    umm Result = Arena->Pos;
+    return Result;
 }
 
-void EndScratch(arena *Arena)
+void EndScratch(arena *Arena, umm BackPos)
 {
-    Arena->Pos = Arena->BackPos;
+    Arena->Pos = BackPos;
 }
 
 void LaneIceberg(void)

@@ -79,18 +79,27 @@ struct point
 
 #include "lib/handmade_font.h"
 
+struct random_series
+{
+    u64 State;
+    u64 Increment;
+    u64 Multiplier;
+};
+typedef struct random_series random_series;
+
 typedef struct app_state app_state;
 struct app_state
 {
     point *Points;
     u32 PointsCount;
     
-    s32 GenerateCount;
-    s32 GenerateStep;
+    s32 GenerateAmount;
     
     app_font Font;
     
     arena *Arena;
+    
+    random_series Series;
     
     b32 Initialized;
 };

@@ -7,9 +7,8 @@
 #include "platform.h"
 
 #define CU_device __device__
-#define CU_host   __host__
+#define CU_host_shared __device__ __host__ 
 #define CU_kernel __global__
-#define CU_devicehost __device __host__
 #define CU_static_shared __shared__
 #define CU_dynamic_shared extern __shared__
 #define CU_cluster __cluster_dims__
@@ -30,6 +29,7 @@ inline void CU_Check_(cudaError_t Code, char *FileName, s32 Line)
     if(Code != cudaSuccess) 
     {
         OS_PrintFormat("%s(%d): ERROR: %s\n", FileName, Line, cudaGetErrorString(Code));
+        DebugBreak;
 #if 0
         if(Abort) 
         {

@@ -67,8 +67,8 @@ _Pragma("clang diagnostic ignored \"-Weverything\"")
 #define DebugBreakOnce { local_persist b32 X = false; Assert(X); X = true; }
 #define NullExpression do { int X = 0; } while(0)
 
-#define Minimum(A, B) do { (((A) < (B)) ? (A) : (B))) } while(0)
-#define Maximum(A, B) do { (((A) > (B)) ? (A) : (B)))  } while(0)
+#define Minimum(A, B) (((A) < (B)) ? (A) : (B))
+#define Maximum(A, B) (((A) > (B)) ? (A) : (B))
 #define Swap(A, B)    do { typeof(A) temp = (typeof(A))A; A = B; B = temp; } while(0)
 
 #define EachIndex(Index, Count) s64 Index = 0; Index < (Count); Index += 1

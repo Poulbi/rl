@@ -9,8 +9,6 @@ struct arena
     void *Base;
     umm Pos;
     umm Size;
-    
-    umm BackPos;
 };
 
 arena *ArenaAlloc(void);

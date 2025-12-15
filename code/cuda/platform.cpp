@@ -12,6 +12,9 @@
 PUSH_WARNINGS;
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "lib/stb_image_write.h"
+
+#define HANDMADE_FONT_IMPLEMENTATION
+#include "lib/handmade_font.h"
 POP_WARNINGS;
 
 global_variable b32 GlobalRunning = true;
@@ -434,7 +437,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         void *Library = 0;
         update_and_render *UpdateAndRender = 0;
         
-        app_state GameState = {};
+        app_state AppState = {};
         
         app_input Input[2] = {};
         app_input *NewInput = &Input[0];
@@ -448,8 +451,8 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         GlobalRunning = true;
         while(GlobalRunning)
         {
-            BeginScratch(CPUArena);
-            BeginScratch(GPUArena);
+            umm CPUBackPos = BeginScratch(CPUArena);
+            umm GPUBackPos = BeginScratch(GPUArena);
             
             // Prepare  Input
             { 
@@ -490,7 +493,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             
 #if 1            
             NewInput->Text.Buffer[NewInput->Text.Count].Codepoint = 0;
-            OS_PrintFormat("%c (%d, %d) 1:%c 2:%c 3:%c\n", 
+            OS_PrintFormat(" '%c' (%d, %d) 1:%c 2:%c 3:%c ", 
                            (u8)NewInput->Text.Buffer[0].Codepoint,
                            NewInput->MouseX, NewInput->MouseY,
                            (NewInput->Buttons[PlatformButton_Left  ].EndedDown ? 'x' : 'o'),
@@ -498,7 +501,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                            (NewInput->Buttons[PlatformButton_Right ].EndedDown ? 'x' : 'o')); 
 #endif
             
-            UpdateAndRender(ThreadContext, &GameState, CPUArena, GPUArena, &Buffer, NewInput);
+            UpdateAndRender(ThreadContext, &AppState, CPUArena, GPUArena, &Buffer, NewInput);
             
             // Sleep
             {            
@@ -538,9 +541,28 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                 
                 timespec EndCounter = LinuxGetWallClock();
                 f32 MSPerFrame = (f32)((f32)LinuxGetNSecondsElapsed(LastCounter, EndCounter)/1000000.f);
-#if 1
-                OS_PrintFormat("%.2fms/f %.2fms/f\n", (f64)WorkMSPerFrame, (f64)MSPerFrame);
-#endif
+                
+                if(AppState.Initialized)
+                {
+                    local_persist s32 Counter = 0;
+                    s32 MaxCount = (s32)GameUpdateHz/2;
+                    
+                    local_persist f32 LastMSPerFrame = WorkMSPerFrame;
+                    
+                    Counter += 1;
+                    if(Counter > MaxCount)
+                    {
+                        LastMSPerFrame = WorkMSPerFrame;
+                        Counter -= MaxCount;
+                    }
+                    
+                    f32 FPS = Minimum(1000.0f/LastMSPerFrame, GameUpdateHz);
+                    DrawTextFormat(CPUArena, &Buffer, &AppState.Font, 140.0f, 30.0f+3.0f*14.0f, 0xFF13171F, 
+                                   "%.2fms/f %.0fFPS", (f64)LastMSPerFrame, (f64)FPS);
+                }
+                
+                OS_PrintFormat("\n");
+                
                 LastCounter = EndCounter;
             }
             
@@ -550,8 +572,8 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             
             FlipWallClock = LinuxGetWallClock();
             
-            EndScratch(CPUArena);
-            EndScratch(GPUArena);
+            EndScratch(CPUArena, CPUBackPos);
+            EndScratch(GPUArena, GPUBackPos);
         }
     }
     
