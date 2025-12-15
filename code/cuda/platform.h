@@ -85,6 +85,9 @@ struct app_state
     point *Points;
     u32 PointsCount;
     
+    s32 GenerateCount;
+    s32 GenerateStep;
+    
     app_font Font;
     
     arena *Arena;

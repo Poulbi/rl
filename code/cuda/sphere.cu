@@ -13,10 +13,17 @@ POP_WARNINGS
 //~ Constants
 
 // AA BB GG RR
+
+#define ColorText 0xff87bfcf
+#define ColorButtonText 0xFFFBFDFE
 #define ColorPoint 0xFF00FFFF
 #define ColorCursor 0xFFFF0000
-#define ColorCursorPressed ColorPoint  
-#define ColorBackground 0xFF3A4151
+#define ColorCursorPressed ColorPoint
+#define ColorButton 0xFF0172AD
+#define ColorButtonHovered 0xFF017FC0
+#define ColorButtonPressed 0xFF0987C8
+#define ColorBackground 0xFF13171F
+#define ColorMapBackground 0xFF3A4151
 
 //~ Functions
 
@@ -98,10 +105,10 @@ RenderPoints(u8 *Pixels, s32 Pitch, s32 BytesPerPixel, s32 Width, s32 Height,
     }
 }
 
-CU_device CU_host b32
-IsInsideRoundedRectangle(s32 X, s32 Y, f32 Width, f32 Height, f32 Radius)
+CU_device CU_host f32
+DistanceInsideRoundedRectangle(s32 X, s32 Y, f32 Width, f32 Height, f32 Radius)
 {
-    b32 Result = false;
+    f32 Result = false;
     
     f32 hX = 0.5f*Width;
     f32 hY = 0.5f*Height;
@@ -111,7 +118,7 @@ IsInsideRoundedRectangle(s32 X, s32 Y, f32 Width, f32 Height, f32 Radius)
     dX = fmaxf(dX, 0.0f);
     dY = fmaxf(dY, 0.0f);
     
-    Result = ((Squared(dX) + Squared(dY)) <= Squared(Radius));
+    Result = (Squared(Radius) - (Squared(dX) + Squared(dY)));
     
     return Result;
 }
@@ -127,11 +134,18 @@ DrawRoundedRectangle(u8 *Pixels, s32 BytesPerPixel, s32 Pitch,
     
     if(X < Width && Y < Height)
     {        
-        b32 IsInside = IsInsideRoundedRectangle(X, Y, (f32)Width, (f32)Height, Radius);
-        if(IsInside)
+        f32 DistanceFromCenter = DistanceInsideRoundedRectangle(X, Y, (f32)Width, (f32)Height, Radius);
+        if(DistanceFromCenter >= 0)
         {
             u32 *Pixel = (u32 *)((u8 *)Pixels + Y*Pitch + X*BytesPerPixel);
-            *Pixel = Color;
+            if(DistanceFromCenter < 20)
+            {
+                *Pixel = 0xFFFFFFFF;
+            }
+            else
+            {
+                *Pixel = Color;
+            }
         }
     }
 }
@@ -149,13 +163,13 @@ DrawButton(u8 *DevicePixels, app_offscreen_buffer *Buffer,
     s32 pX = Input->MouseX - X;
     s32 pY = Input->MouseY - Y;
     
-    b32 InsideButton = IsInsideRoundedRectangle(pX, pY, (f32)Width, (f32)Height, Radius);
+    b32 InsideButton = (DistanceInsideRoundedRectangle(pX, pY, (f32)Width, (f32)Height, Radius) >= 0);
     b32 MousePressed = (Input->Buttons[PlatformButton_Left].EndedDown);
     
     u32 Color = (InsideButton ? 
                  (MousePressed ?
-                  ColorBackground : ColorCursorPressed) :
-                 ColorCursor);
+                  ColorButtonPressed : ColorButtonHovered) :
+                 ColorButton);
     
     dim3 block(16, 16);
     dim3 grid((Width  + block.x - 1) / block.x,
@@ -163,7 +177,7 @@ DrawButton(u8 *DevicePixels, app_offscreen_buffer *Buffer,
     DrawRoundedRectangle<<<grid, block>>>(ButtonPixels, Buffer->BytesPerPixel, Buffer->Pitch, Width, Height, Radius, Color);
     CU_Check(cudaGetLastError());
     
-    Pressed = InsideButton && MousePressed;
+    Pressed = InsideButton && WasPressed(Input->Buttons[PlatformButton_Left]);
     
     return Pressed;
 }
@@ -198,6 +212,9 @@ C_LINKAGE UPDATE_AND_RENDER(UpdateAndRender)
         
         InitFont(&App->Font, "./data/font.ttf");
         
+        App->GenerateStep = 10;
+        App->GenerateCount = 0;
+        
         App->Initialized = true;
     }
     
@@ -213,8 +230,11 @@ C_LINKAGE UPDATE_AND_RENDER(UpdateAndRender)
         // Clear
         {        
             s32 BlockSize = 32;
-            s32 BlocksCount = Width*Height + 1;
-            FillRectangle<<<BlocksCount, BlockSize>>>((u32 *)DevicePixels, Pitch, BytesPerPixel, Width, Height, 0);
+            s32 PixelsCount = Buffer->Height*Buffer->Pitch;
+            s32 BlocksCount = PixelsCount/BlockSize + 1;;
+            FillRectangle<<<BlocksCount, BlockSize>>>(DevicePixels, Buffer->Pitch, Buffer->BytesPerPixel, Buffer->Width, Buffer->Height, ColorText);
+            CU_Check(cudaGetLastError());
+            CU_Check(cudaDeviceSynchronize());
         }
 #endif
         
@@ -225,6 +245,29 @@ C_LINKAGE UPDATE_AND_RENDER(UpdateAndRender)
             
             Y += 40;
             Pressed = DrawButton(DevicePixels, Buffer, Input, 10, Y, 100, 30, 10.0f);
+            if(Pressed)
+            {
+                App->GenerateCount += App->GenerateStep;
+            }
+            
+            Y += 40;
+            Pressed = DrawButton(DevicePixels, Buffer, Input, 10, Y, 100, 30, 10.0f);
+            if(Pressed)
+            {
+                if(App->GenerateStep < 100000000)
+                {
+                    App->GenerateStep *= 10;
+                }
+            }
+            
+            Y += 40;
+            Pressed = DrawButton(DevicePixels, Buffer, Input, 10, Y, 100, 30, 10.0f);
+            if(Pressed)
+            {
+                App->GenerateStep = 10;
+                App->GenerateCount = 0;
+            }
+            
         }
         
         s32 MapWidth = (s32)roundf(0.6f*(f32)Buffer->Width);
@@ -302,9 +345,42 @@ C_LINKAGE UPDATE_AND_RENDER(UpdateAndRender)
             }
         }
         
-        DrawText(Buffer, &App->Font, 16.0f, S8Lit("Generate"), v2{30.0f, 28.0f}, v3{0.0f, 0.0f, 0.0f}, false);
-        DrawText(Buffer, &App->Font, 16.0f, S8Lit("+10"), v2{48.0f, 28.0f + 40.0f}, v3{0.0f, 0.0f, 0.0f}, false);
+        f32 Y = 29.0f;
         
+        DrawText(Buffer, &App->Font, 16.0f, S8Lit("Generate"), v2{32.0f, Y}, ColorButtonText, false);
+        
+        {
+            Y += 40.0f;
+            str8 Text = {0};
+            Text.Data = PushArray(CPUArena, u8, 256);
+            Text.Size = (umm)stbsp_sprintf((char *)Text.Data, "+%d", App->GenerateStep);
+            
+            f32 Step = 3.0f;
+            v2 Offset = {48.0f+3.0f*Step - (f32)Text.Size*Step, Y};
+            
+            DrawText(Buffer, &App->Font, 16.0f, Text, Offset, ColorButtonText, false);
+        }
+        
+        {
+            Y += 40.0f;
+            str8 Text = {0};
+            Text.Data = PushArray(CPUArena, u8, 256);
+            Text.Size = (umm)stbsp_sprintf((char *)Text.Data, "*10");
+            DrawText(Buffer, &App->Font, 16.0f, Text, v2{48.0f, Y}, ColorButtonText, false);
+        }
+        
+        {
+            Y += 40.0f;
+            DrawText(Buffer, &App->Font, 16.0f, S8Lit("Reset"), v2{42.0f, Y}, ColorButtonText, false);
+        }
+        
+        {
+            Y += 40.0f;
+            str8 Text = {0};
+            Text.Data = PushArray(CPUArena, u8, 256);
+            Text.Size = (umm)stbsp_sprintf((char *)Text.Data, "Count: %d", App->GenerateCount);
+            DrawText(Buffer, &App->Font, 16.0f, Text, v2{24.0f, Y}, ColorText, false);
+        }
         
     }
     

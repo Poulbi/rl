@@ -38,11 +38,11 @@ internal void InitFont(app_font *Font, char *FilePath);
 internal void DrawCharacter(app_offscreen_buffer *Buffer,  u8 *FontBitmap,
                             int FontWidth, int FontHeight, 
                             int XOffset, int YOffset,
-                            v3 Color);
+                            u32 Color);
 internal void DrawText(app_offscreen_buffer *Buffer, app_font *Font, f32 HeightPixels,
-                       str8 Text, v2 Offset, v3 Color, b32 IsUTF8);
+                       str8 Text, v2 Offset, u32 Color, b32 IsUTF8);
 internal void DrawTextInBox(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font, 
-                            str8 Text, f32 HeightPx, v3 Color,
+                            str8 Text, f32 HeightPx, u32 Color,
                             v2 BoxMin, v2 BoxMax, b32 Centered);
 
 #endif //HANDMADE_FONT_H
@@ -90,7 +90,7 @@ internal void
 DrawCharacter(app_offscreen_buffer *Buffer,  u8 *FontBitmap,
               int FontWidth, int FontHeight, 
               int XOffset, int YOffset,
-              v3 Color)
+              u32 Color)
 {
     s32 MinX = 0;
     s32 MinY = 0;
@@ -136,9 +136,19 @@ DrawCharacter(app_offscreen_buffer *Buffer,  u8 *FontBitmap,
             f32 DG = (f32)((*Pixel >> 8) & 0xFF);
             f32 DB = (f32)((*Pixel >> 0) & 0xFF);
             
-            f32 R = Color.R*255.0f*Alpha + DR*(1-Alpha);
+            f32 SR = (f32)((Color >> 16) & 0xFF);
+            f32 SG = (f32)((Color >> 8) & 0xFF);
+            f32 SB = (f32)((Color >> 0) & 0xFF);
+            
+#if 0            
+            f32 R = ColorR*255.0f*Alpha + DR*(1-Alpha);
             f32 G = Color.G*255.0f*Alpha + DG*(1-Alpha);
             f32 B = Color.B*255.0f*Alpha +  DB*(1-Alpha);
+#else
+            f32 R = SR*Alpha + DR*(1-Alpha);
+            f32 G = SG*Alpha + DG*(1-Alpha);
+            f32 B = SB*Alpha + DB*(1-Alpha);
+#endif
             
             u32 Value = (((u32)0xFF << 24) |
                          ((u32)(R) << 16) |
@@ -154,7 +164,7 @@ DrawCharacter(app_offscreen_buffer *Buffer,  u8 *FontBitmap,
 
 internal void
 DrawText(app_offscreen_buffer *Buffer, app_font *Font, f32 HeightPixels,
-         str8 Text, v2 Offset, v3 Color, b32 IsUTF8)
+         str8 Text, v2 Offset, u32 Color, b32 IsUTF8)
 {
     Assert(Font->Initialized);
     
@@ -204,7 +214,7 @@ DrawText(app_offscreen_buffer *Buffer, app_font *Font, f32 HeightPixels,
 
 internal void
 DrawTextInBox(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font, 
-              str8 Text, f32 HeightPx, v3 Color,
+              str8 Text, f32 HeightPx, u32 Color,
               v2 BoxMin, v2 BoxMax, b32 Centered)
 {
     BeginScratch(Arena);
