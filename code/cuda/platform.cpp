@@ -159,12 +159,6 @@ linux_x11_context LinuxInitX11(app_offscreen_buffer *Buffer)
                 // NOTE(luca): Tiling window managers should treat windows with the WM_TRANSIENT_FOR property as pop-up windows.  This way we ensure that we will be a floating window.  This works on my setup (dwm). 
                 XRet = XSetTransientForHint(Result.DisplayHandle, Result.WindowHandle, RootWindow);
                 
-                Result.WM_DELETE_WINDOW = XInternAtom(Result.DisplayHandle, "WM_DELETE_WINDOW", False);
-                if(!XSetWMProtocols(Result.DisplayHandle, Result.WindowHandle, &Result.WM_DELETE_WINDOW, 1))
-                {
-                    // TODO(luca): Logging
-                }
-                
                 XClassHint ClassHint = {};
                 ClassHint.res_name = "Handmade Window";
                 ClassHint.res_class = "Handmade Window";
@@ -190,6 +184,12 @@ linux_x11_context LinuxInitX11(app_offscreen_buffer *Buffer)
                 
                 XRet = XMapWindow(Result.DisplayHandle, Result.WindowHandle);
                 XRet = XFlush(Result.DisplayHandle);
+                
+                Result.WM_DELETE_WINDOW = XInternAtom(Result.DisplayHandle, "WM_DELETE_WINDOW", False);
+                XRet = XSetWMProtocols(Result.DisplayHandle, Result.WindowHandle, 
+                                       &Result.WM_DELETE_WINDOW, 1);
+                Assert(XRet);
+                
             }
         }
     }
@@ -386,21 +386,26 @@ LinuxProcessPendingMessages(linux_x11_context *Linux, app_input *Input, app_offs
         }
     }
     
-    // TODO(luca): Move this into process pending messages.
-    s32 MouseX = 0, MouseY = 0, MouseZ = 0;
-    u32 MouseMask = 0;
-    u64 Ignored;
-    if(XQueryPointer(Linux->DisplayHandle, Linux->WindowHandle, 
-                     &Ignored, &Ignored, (int *)&Ignored, (int *)&Ignored,
-                     &MouseX, &MouseY, &MouseMask))
-    {
-        if(MouseX <= Buffer->Width && MouseX >= 0 &&
-           MouseY <= Buffer->Height && MouseY >= 0)
+    // Window could have been closed
+    if(GlobalRunning)
+    {        
+        // TODO(luca): Move this into process pending messages.
+        s32 MouseX = 0, MouseY = 0, MouseZ = 0;
+        u32 MouseMask = 0;
+        u64 Ignored;
+        if(XQueryPointer(Linux->DisplayHandle, Linux->WindowHandle, 
+                         &Ignored, &Ignored, (int *)&Ignored, (int *)&Ignored,
+                         &MouseX, &MouseY, &MouseMask))
         {
-            Input->MouseY = MouseY;
-            Input->MouseX = MouseX;
+            if(MouseX <= Buffer->Width && MouseX >= 0 &&
+               MouseY <= Buffer->Height && MouseY >= 0)
+            {
+                Input->MouseY = MouseY;
+                Input->MouseX = MouseX;
+            }
         }
     }
+    
 }
 
 internal void
