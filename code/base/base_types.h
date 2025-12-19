@@ -67,4 +67,32 @@ struct str8
 raddbg_type_view(str8, no_addr(array((char *)Data, Size)));
 #define S8Lit(String) (str8){.Data = (u8 *)(String), .Size = (sizeof((String)) - 1)}
 
+#define S8Idx(String, Idx) (str8){.Data = ((String).Data + (Idx)), .Size = ((String).Size - (Idx))}
+
+internal b32
+StringMatch(str8 A, str8 B, b32 AIsPrefix)
+{
+    b32 Match = false;
+    
+    b32 Requirements = false;
+    Requirements |= ( AIsPrefix && (A.Size <= B.Size));
+    Requirements |= (!AIsPrefix && (A.Size == B.Size));
+    
+    if(Requirements)
+    {
+        Match = true;
+        for(EachIndex(Idx, A.Size))
+        {
+            if((A.Data[Idx] != B.Data[Idx]))
+            {
+                Match = false;
+                break;
+            }
+        }
+    }
+    
+    return Match;
+}
+
+
 #endif //BASE_TYPES_H

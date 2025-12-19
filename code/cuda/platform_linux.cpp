@@ -110,7 +110,8 @@ LinuxGetSecondsElapsed(timespec Start, timespec End)
     return Result;
 }
 
-linux_x11_context LinuxInitX11(app_offscreen_buffer *Buffer)
+internal linux_x11_context 
+LinuxInitX11(app_offscreen_buffer *Buffer)
 {
     linux_x11_context Result = {};
     

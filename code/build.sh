@@ -42,11 +42,11 @@ CU_Compile()
 
  Flags="$Flags
  -I$ScriptDirectory -DOS_LINUX=1
-	--threads 0
-    --use_fast_math
-    -gencode arch=compute_60,code=sm_60
-	--resource-usage
-	-time $Build/${Out}_time.txt
+ --threads 0
+ --use_fast_math
+ --generate-code arch=compute_60,code=sm_60
+ --resource-usage
+ --time $Build/${Out}_time.txt
  "
 
  WarningFlags="

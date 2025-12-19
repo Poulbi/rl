@@ -12,6 +12,7 @@ struct app_offscreen_buffer
     s32 BytesPerPixel;
 };
 
+typedef struct app_text_button app_text_button;
 struct app_text_button
 {
     rune Codepoint;
@@ -20,14 +21,13 @@ struct app_text_button
     b32 Shift;
     b32 Alt;
 };
-typedef struct app_text_button app_text_button;
 
+typedef struct app_button_state app_button_state;
 struct app_button_state
 {
     s32 HalfTransitionCount;
     b32 EndedDown;
 };
-typedef struct app_button_state app_button_state;
 
 enum platform_cursor_shape
 {
@@ -70,22 +70,22 @@ inline b32 WasPressed(app_button_state State)
 }
 
 //~ App logic
-struct __align__(8) point
+typedef struct point point;
+struct __align__(8) point  
 {
     f32 Lat;
     f32 Lon;
 };
 
-
 #include "lib/handmade_font.h"
 
+typedef struct random_series random_series;
 struct random_series
 {
     u64 State;
     u64 Increment;
     u64 Multiplier;
 };
-typedef struct random_series random_series;
 
 typedef struct app_state app_state;
 struct app_state
@@ -109,8 +109,5 @@ struct app_state
 //~ Functions
 #define UPDATE_AND_RENDER(Name) void Name(thread_context *Context, app_state *App, arena *CPUFrameArena, arena *GPUFrameArena, app_offscreen_buffer *Buffer, app_input *Input)
 typedef UPDATE_AND_RENDER(update_and_render);
-
-
-
 
 #endif //PLATFORM_H

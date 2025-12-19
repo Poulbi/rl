@@ -209,8 +209,44 @@ LinuxDebuggerIsAttached()
 internal void 
 LinuxMainEntryPoint(int ArgsCount, char **Args)
 {
-    GlobalDebuggerIsAttached = LinuxDebuggerIsAttached();
-    
+    // Check if debugger is attached
+    {
+        s32 TracerPid = 0;
+        
+        u8 FileBuffer[ARG_MAX] = {0};
+        int File = open("/proc/self/status", O_RDONLY);
+        smm Size = read(File, FileBuffer, sizeof(FileBuffer));
+        str8 Out = {};
+        Out.Size = (umm)Size;
+        Out.Data = FileBuffer;
+        
+        str8 TracerPidKey = S8Lit("TracerPid:\t");
+        
+        for(EachIndex(Idx, Out.Size))
+        {
+            
+            str8 Search = S8Idx(Out, Idx);
+            if(StringMatch(TracerPidKey, Search, true))
+            {
+                Idx += TracerPidKey.Size;
+                
+                while(Idx < Out.Size && 
+                      (Out.Data[Idx] >= '0' && Out.Data[Idx] <= '9') &&
+                      Out.Data[Idx] != '\n')
+                {
+                    s32 Digit = (s32)(Out.Data[Idx] - '0');
+                    TracerPid = 10*TracerPid + Digit;
+                    Idx += 1;
+                }
+                
+                break;
+            }
+            
+            while(Idx < Out.Size && Out.Data[Idx] != '\n') Idx += 1;
+        }
+        
+        GlobalDebuggerIsAttached = !!TracerPid;
+    }
     
     arena *Arena = ArenaAlloc();
     
