@@ -67,10 +67,29 @@ struct str8
 };
 raddbg_type_view(str8, no_addr(array((char *)Data, Size)));
 #define S8(String)                   (str8){.Data = (u8 *)(String), .Size = (sizeof((String)) - 1)}
-#define S8FromCString(String)        (str8){.Data = (String), .Size = StringLength((String))}
-#define S8From(String, Start)        (str8){.Data = ((String).Data + (Start)), .Size = ((String).Size - (Start))}
-#define S8To(String, End)            (str8){.Data = (String).Data, .Size = (End)}
-#define S8FromTo(String, Start, End) (str8){.Data = (String).Data + (Start), .Size = ((End) - (Start))}
+#define S8CString(String)            (str8){.Data = (u8 *)(String), .Size = StringLength((char *)(String))}
+#define S8From(String, Start)        (str8){.Data = (u8 *)((String).Data + (Start)), .Size = ((String).Size - (Start))}
+#define S8To(String, End)            (str8){.Data = (u8 *)(String).Data, .Size = (End)}
+#define S8FromTo(String, Start, End) (str8){.Data = (u8 *)(String).Data + (Start), .Size = ((End) - (Start))}
+#define S8Fmt "%.*s" 
+#define S8Arg(String) (int)((String).Size), (String).Data
+
+internal str8 
+S8SkipLastSlash(str8 String)
+{
+	umm LastSlash = 0;
+	for EachIndex(i, String.Size)
+	{
+		if(String.Data[i] == '/')
+		{
+			LastSlash = i;
+		}
+	}
+	LastSlash += 1;
+    
+	str8 Result = S8From(String, LastSlash);
+	return Result;
+}
 
 internal b32
 StringMatch(str8 A, str8 B, b32 AIsPrefix)
@@ -84,7 +103,7 @@ StringMatch(str8 A, str8 B, b32 AIsPrefix)
     if(Requirements)
     {
         Match = true;
-        for(EachIndex(Idx, A.Size))
+        for EachIndex(Idx, A.Size)
         {
             if((A.Data[Idx] != B.Data[Idx]))
             {

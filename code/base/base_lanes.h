@@ -11,6 +11,8 @@ struct thread_context
     s64 LaneCount;
     s64 LaneIndex;
     
+    pthread_t Handle;
+    
     u64 *SharedStorage;
     barrier Barrier;
     

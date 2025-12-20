@@ -6,6 +6,8 @@
 
 UPDATE_AND_RENDER(UpdateAndRenderStub) {}
 
+#define AppLog(Format, ...) do {if(*GlobalRunning)Log(Format, ##__VA_ARGS__);} while(0)
+
 C_LINKAGE ENTRY_POINT(EntryPoint)
 {
     if(LaneIndex() == 0)
@@ -41,7 +43,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         
         s64 LastCounter = OS_GetWallClock();
         s64 FlipWallClock = LastCounter;
-        f32 GameUpdateHz = 60.0f;
+        f32 GameUpdateHz = 144.0f;
         f32 TargetSecondsPerFrame = 1.0f/GameUpdateHz; 
         
         while(*Running)
@@ -51,7 +53,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             // Prepare  Input
             { 
                 NewInput->Text.Count = 0;
-                for(EachIndex(Idx, PlatformButton_Count))
+                for EachIndex(Idx, PlatformButton_Count)
                 {
                     NewInput->Buttons[Idx].EndedDown = OldInput->Buttons[Idx].EndedDown;
                     NewInput->Buttons[Idx].HalfTransitionCount = 0;
@@ -87,12 +89,12 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             
 #if 1            
             NewInput->Text.Buffer[NewInput->Text.Count].Codepoint = 0;
-            Log(" '%c' (%d, %d) 1:%c 2:%c 3:%c ", 
-                (u8)NewInput->Text.Buffer[0].Codepoint,
-                NewInput->MouseX, NewInput->MouseY,
-                (NewInput->Buttons[PlatformButton_Left  ].EndedDown ? 'x' : 'o'),
-                (NewInput->Buttons[PlatformButton_Middle].EndedDown ? 'x' : 'o'),
-                (NewInput->Buttons[PlatformButton_Right ].EndedDown ? 'x' : 'o')); 
+            AppLog(" '%c' (%d, %d) 1:%c 2:%c 3:%c ", 
+                   (u8)NewInput->Text.Buffer[0].Codepoint,
+                   NewInput->MouseX, NewInput->MouseY,
+                   (NewInput->Buttons[PlatformButton_Left  ].EndedDown ? 'x' : 'o'),
+                   (NewInput->Buttons[PlatformButton_Middle].EndedDown ? 'x' : 'o'),
+                   (NewInput->Buttons[PlatformButton_Right ].EndedDown ? 'x' : 'o')); 
 #endif
             
             UpdateAndRender(ThreadContext, &AppState, CPUFrameArena, &Buffer, NewInput);
@@ -153,11 +155,10 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                     
                     f32 FPS = Minimum(1000.0f/LastMSPerFrame, GameUpdateHz);
                     
-                    Log("%.2fms/f %.0fFPS", (f64)LastMSPerFrame, (f64)FPS);
+                    AppLog("%.2fms/f %.0fFPS", (f64)LastMSPerFrame, (f64)FPS);
                 }
                 
-                
-                Log("\n");
+                AppLog("\n");
                 
                 LastCounter = EndCounter;
             }

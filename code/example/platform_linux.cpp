@@ -6,6 +6,7 @@
 #include <X11/extensions/Xrandr.h>
 #include <X11/cursorfont.h>
 #include <signal.h>
+#include <execinfo.h>
 
 struct linux_x11_context
 {
@@ -62,18 +63,40 @@ ConvertUTF8StringToRune(u8 UTF8String[4])
 }
 
 internal void
-LinuxSIGINTHandler(int SigNum)
+LinuxSigINTHandler(int SigNum)
 {
     *GlobalRunning = false;
+    
+    Log("\nCallstack:\n");
+    
+    void *IPs[4096] = {0};
+    int IPsCount = backtrace(IPs, ArrayCount(IPs));
+    
+    for EachIndex(Idx, IPsCount)
+    {
+        Dl_info Info = {0};
+        dladdr(IPs[Idx], &Info);
+        char CMD[2048];
+        snprintf(CMD, sizeof(CMD), "llvm-symbolizer --relative-address -f -e %s %lu", Info.dli_fname, (unsigned long)IPs[Idx] - (unsigned long)Info.dli_fbase);
+        FILE *Out = popen(CMD, "r");
+        if(Out)
+        {
+            char FuncName[256], FileName[256];
+            if(fgets(FuncName, sizeof(FuncName), Out) && fgets(FileName, sizeof(FileName), Out))
+            {
+                str8 Func = S8CString(FuncName);
+                if(Func.Size > 0) Func.Size -= 1;
+                str8 Module = S8SkipLastSlash(S8CString(Info.dli_fname));
+                str8 File = S8SkipLastSlash(S8CString(FileName));
+                if(File.Size > 0) File.Size -= 1;
+                Log("%lu. " S8Fmt ", " S8Fmt " " S8Fmt "\n",
+                    Idx, S8Arg(Module), S8Arg(Func), S8Arg(File));
+            }
+        }
+    }
+    
+    Log("\nVersion: 1.0\n");
 }
-
-internal void
-LinuxSetSIGINT(b32 *Running)
-{
-    GlobalRunning = Running; 
-    signal(SIGINT, LinuxSIGINTHandler);
-}
-
 
 internal void 
 LinuxProcessKeyPress(app_button_state *ButtonState, b32 IsDown)
@@ -90,12 +113,12 @@ internal P_context
 P_ContextInit(arena *Arena, app_offscreen_buffer *Buffer, b32 *Running)
 {
     P_context Result = 0;
+    s32 XRet = 0;
     
     linux_x11_context *Context = PushStruct(Arena, linux_x11_context);
     
-    LinuxSetSIGINT(Running);
-    
-    s32 XRet = 0;
+    GlobalRunning = Running; 
+    signal(SIGINT, LinuxSigINTHandler);
     
     Context->DisplayHandle = XOpenDisplay(0);
     if(Context->DisplayHandle)
@@ -306,6 +329,11 @@ P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buf
                             (Symbol == XK_F4))
                     {
                         *Running = false;
+                    }
+                    else if((WindowEvent.xkey.state & Mod1Mask) && 
+                            (Symbol == XK_F3))
+                    {
+                        pthread_kill(ThreadContext->Handle, SIGINT);
                     }
                 } break;
                 

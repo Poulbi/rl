@@ -17,9 +17,9 @@ release=0
 # Targets
 hash=0
 samples=0
-cuda=0
+cuversine=0
 example=0
-Targets="hash/samples/cuda/example"
+Targets="hash/samples/cuversine/example"
 
 # Default
 [ "$#" = 0 ] && example=1
@@ -43,7 +43,7 @@ CU_Compile()
  printf '[%s compile]\n' "$Compiler"
 
  Flags="$Flags
- -I$ScriptDirectory -DOS_LINUX=1
+ -I$ScriptDirectory
  --threads 0
  --use_fast_math
  --generate-code arch=compute_60,code=sm_60
@@ -104,7 +104,7 @@ C_Compile()
  [ "$clang" = 1 ] && Compiler="clang"
  printf '[%s compile]\n' "$Compiler"
  
- CommonCompilerFlags="-DOS_LINUX=1 -fsanitize-trap -nostdinc++ -fno-threadsafe-statics -I$ScriptDirectory"
+ CommonCompilerFlags="-fsanitize-trap -nostdinc++ -fno-threadsafe-statics -I$ScriptDirectory"
  CommonWarningFlags="-Wall -Wextra -Wconversion -Wdouble-promotion -Wno-sign-conversion -Wno-sign-compare -Wno-double-promotion -Wno-unused-but-set-variable -Wno-unused-variable -Wno-write-strings -Wno-pointer-arith -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers"
  LinkerFlags=""
 
@@ -150,10 +150,10 @@ then
  CU_Compile $(Strip ./cuda-samples/topologyQuery.cu)
 fi
 
-if [ "$cuda" = 1 ]
+if [ "$cuversine" = 1 ]
 then
- CU_Compile ./cuda/app.cu app.so "--compiler-options '-fPIC' --shared" 
- CU_Compile $(Strip ./cuda/platform.cpp) "-lX11"
+ CU_Compile ./cuversine/app.cu app.so "--compiler-options '-fPIC' --shared" 
+ CU_Compile $(Strip ./cuversine/platform.cpp) "-lX11"
 fi
 
 if [ "$example" = 1 ]

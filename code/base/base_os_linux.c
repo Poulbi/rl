@@ -23,10 +23,8 @@ typedef void *pthread_entry_point_func(void *);
 typedef struct os_thread os_thread;
 struct os_thread
 {
-    pthread_t Handle;
     void *Result;
     
-    thread_context Context;
     entry_point_params Params;
 };
 
@@ -140,15 +138,19 @@ OS_GetWallClock()
     return Result;
 }
 
+global_variable thread_context *DEBUGThreadContext; 
+
 //~ Entrypoint
 ENTRY_POINT(ThreadInitEntryPoint)
 {
     ThreadInit(&Params->Context);
+    DEBUGThreadContext = ThreadContext;
 #ifndef BASE_NO_ENTRYPOINT
-    return EntryPoint(Params);
-#else
-    return 0;
+    EntryPoint(Params);
 #endif
+    
+    LaneIceberg();
+    return 0;
 }
 
 internal void 
@@ -158,14 +160,14 @@ LinuxMainEntryPoint(int ArgsCount, char **Args)
     {
         s32 TracerPid = 0;
         
-        u8 FileBuffer[ARG_MAX] = {0};
+        u8 FileBuffer[Kilobytes(2)] = {0};
         int File = open("/proc/self/status", O_RDONLY);
         smm Size = read(File, FileBuffer, sizeof(FileBuffer));
         str8 Out = {FileBuffer, (umm)Size};
         
         str8 TracerPidKey = S8("TracerPid:\t");
         
-        for(EachIndex(Idx, Out.Size))
+        for EachIndex(Idx, Out.Size)
         {
             str8 Search = S8From(Out, Idx);
             if(StringMatch(TracerPidKey, Search, true))
@@ -213,7 +215,7 @@ LinuxMainEntryPoint(int ArgsCount, char **Args)
     Ret = pthread_barrier_init((pthread_barrier_t *)Barrier, 0, (u32)ThreadsCount);
     Assert(Ret == 0);
     
-    for(s64 Index = 0; Index < ThreadsCount; Index += 1)
+    for EachIndex(Index, ThreadsCount)
     {
         entry_point_params *Params = &Threads[Index].Params;
         Params->Context.LaneIndex = Index;
@@ -223,13 +225,15 @@ LinuxMainEntryPoint(int ArgsCount, char **Args)
         Params->Args = Args;
         Params->ArgsCount = ArgsCount;
         
-        Ret = pthread_create(&Threads[Index].Handle, 0, (pthread_entry_point_func *)ThreadInitEntryPoint, Params);
+        pthread_t Handle;
+        Ret = pthread_create(&Handle, 0, (pthread_entry_point_func *)ThreadInitEntryPoint, Params);
         Assert(Ret == 0);
+        Params->Context.Handle = Handle;
     }
     
-    for(s64 Index = 0; Index < ThreadsCount; Index += 1)
+    for EachIndex(Index, ThreadsCount)
     {
-        Ret = pthread_join(Threads[Index].Handle, &Threads[Index].Result);
+        Ret = pthread_join(Threads[Index].Params.Context.Handle, &Threads[Index].Result);
         Assert(Ret == 0);
     }
 }

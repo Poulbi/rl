@@ -1,9 +1,15 @@
 #ifndef BASE_MACROS_H
 #define BASE_MACROS_H
 
+// detect OS
+#if __linux__
+# define OS_LINUX 1
+#elif _WIN32
+# define OS_WINDOWS 1
+#endif
+
 // Detect compiler
 #if __clang__
-
 # define COMPILER_CLANG 1
 #elif _MSC_VER
 # define COMPILER_MSVC 1
@@ -12,13 +18,19 @@
 #endif
 
 // Zero undefined
-#if !defined(COMPILER_MSVC)
+#ifndef OS_LINUX
+# define OS_LINUX 0
+#endif
+#ifndef OS_WINDOWS
+# define OS_WINDOWS 0
+#endif
+#ifndef COMPILER_MSVC
 # define COMPILER_MSVC 0
 #endif
-#if !defined(COMPILER_LLVM)
+#ifndef COMPILER_LLVM
 # define COMPILER_LLVM 0
 #endif
-#if !defined(COMPILER_GNU)
+#ifndef COMPILER_GNU
 # define COMPILER_GNU 0
 #endif
 
@@ -89,7 +101,7 @@ template <typename type> inline void
 Swap(type& A, type& B) { type T = A; A = B; B = T; }
 #endif
 
-#define EachIndex(Index, Count) umm Index = 0; Index < (Count); Index += 1
+#define EachIndex(Index, Count) (umm Index = 0; Index < (Count); Index += 1)
 
 #if OS_WINDOWS
 # include <windows.h>

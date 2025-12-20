@@ -1,0 +1,138 @@
+@Table Compilers:
+{
+    clang,
+    gcc,
+    g++
+}
+
+@Table Modes:
+{
+    debug,
+    release,
+}
+
+@Table Types:
+{
+    c,
+    cpp,
+    cuda,
+}
+
+// -DOS_LINUX
+
+@Table Flags:
+{
+    Common:
+    {
+        "-fsanitize-trap",
+        "-I", PathToCode
+    }
+    
+    CPP:
+    {
+        "-nostdinc++",
+        "-fno-threadsafe-statics",
+    }
+    
+    Warning:
+    {
+        "-Wall",
+        "-Wextra",
+        "-Wconversion",
+        "-Wdouble-promotion",
+        "-Wno-sign-conversion",
+        "-Wno-sign-compare",
+        "-Wno-double-promotion",
+        "-Wno-unused-but-set-variable",
+        "-Wno-unused-variable",
+        "-Wno-write-strings",
+        "-Wno-pointer-arith",
+        "-Wno-unused-parameter",
+        "-Wno-unused-function",
+        "-Wno-missing-field-initializers"
+    }
+    
+    Debug:
+    {
+        "-g -ggdb -g3",
+        "-DRL_INTERNAL=1",
+    },
+    
+    Clang:
+    {
+        "-fdiagnostics-absolute-paths",
+        "-ftime-trace",
+        "-Wno-null-dereference",
+        "-Wno-missing-braces",
+        "-Wno-vla-extension",
+        "-Wno-writable-strings",
+        "-Wno-address-of-temporary",
+        "-Wno-int-to-void-pointer-cast"
+    }
+    
+    GCC:
+    {
+        "-Wno-cast-function-type", 
+        "-Wno-missing-field-initializers",
+        "-Wno-int-to-pointer-cast",
+    }
+    
+    CUDA:
+    {
+        "-lineinfo",
+        "-src-in-ptx",
+        "-diag-suppress 1143",
+        "-diag-suppress 2464",
+        "-diag-suppress 177",
+        "-diag-suppress 550",
+        "-diag-suppress 114",
+        "-Wno-deprecated-gpu-targets",
+        "-Xcompiler -Wall",
+        "-Xcompiler -Wextra",
+        "-Xcompiler -Wconversion",
+        "-Xcompiler -Wdouble-promotion",
+        -"Xcompiler -Wno-pointer-arith",
+        "-Xcompiler -Wno-attributes ",
+        "-Xcompiler -Wno-unused-but-set-variable ",
+        "-Xcompiler -Wno-unused-variable ",
+        "-Xcompiler -Wno-write-strings",
+        "-Xcompiler -Wno-pointer-arith",
+        "-Xcompiler -Wno-unused-parameter",
+        "-Xcompiler -Wno-unused-function",
+        "-Xcompiler -Wno-missing-field-initializers",
+    }
+    
+    Release:
+    {
+        "-O3"
+    }
+}
+
+
+// NOTE(luca): If 'Source' is one tag then use Strip, otherwise the second tag specifies the output name
+@Table(Type, Source, ExtraFlags) Targets:
+{
+    cuversine:
+    {
+        {cuda, {"./cuversine/app.cu", "app.so"}, "-Xcompiler '-fPIC' --shared"}
+        {cuda, "./cuversine/platform.cpp", "-lX11"}
+    }
+    
+    hash:
+    {
+        {c, "./hash/hash.c"}
+    }
+    
+    samples:
+    {
+        {cuda, "./cuda/samples/deviceQuery.cpp"}
+        {cuda, "./cuda/samples/deviceQueryDrv.cpp"}
+        {cuda, "./cuda/samples/topologyQuery.cpp"}
+    }
+    
+    @Default example:
+    {
+        {cpp, {"./example/app.cpp", "app.so"}, "-fPIC --shared -DBASE_NO_ENTRYPOINT=1"}
+        {cpp, "./example/platform.cpp", "-lX11"}
+    }
+}

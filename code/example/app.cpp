@@ -26,14 +26,13 @@ UPDATE_AND_RENDER(UpdateAndRender)
         App->Initialized = true;
     }
     
-    for(EachIndex(Y, Buffer->Height))
+    for EachIndex(Y, Buffer->Height)
     {
-        for(EachIndex(X, Buffer->Width))
+        for EachIndex(X, Buffer->Width)
         {
             u32 *Pixel = (u32 *)(Buffer->Pixels + Y*Buffer->Pitch + X*Buffer->BytesPerPixel);
-            *Pixel = ColorMapBackground;
+            *Pixel = ColorPoint;
         }
-        
     }
     
 }
