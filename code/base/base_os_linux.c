@@ -1,6 +1,6 @@
 // Standard
+#include <stdarg.h>
 #include <stdio.h>
-#include <string.h>
 
 // Linux
 #include <errno.h>
@@ -14,11 +14,6 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <fcntl.h>
-
-PUSH_WARNINGS
-#define STB_SPRINTF_IMPLEMENTATION
-#include "lib/stb_sprintf.h"
-POP_WARNINGS
 
 #include "base_arenas.h"
 
@@ -44,8 +39,7 @@ AssertErrno(b32 Expression)
     if(!Expression)
     {
         int Errno = errno;
-        char *Error = strerror(Errno);
-        Assert(0);
+        AssertMsg(0, "errno: %d", Errno);
     }
 }
 
@@ -105,14 +99,10 @@ OS_PrintFormat(char *Format, ...)
     va_list Args;
     va_start(Args, Format);
     
-    vprintf(Format, Args);
-    
-    // TODO(luca): Make these thread-safe.
-#if 0    
-    int Length = stbsp_vsprintf((char *)LogBuffer, Format, Args);
+    // TODO(luca): stb_sprintf would be nice, but takes long time to compile.
+    int Length = vsprintf((char *)LogBuffer, Format, Args);
     smm BytesWritten = write(STDOUT_FILENO, LogBuffer, Length);
     AssertErrno(BytesWritten == Length);
-#endif
     
 }
 
@@ -163,7 +153,7 @@ LinuxDebuggerIsAttached()
     Out.Size = (umm)Size;
     Out.Data = FileBuffer;
     
-    str8 Search = S8Lit("TracerPid:\t");
+    str8 Search = S8("TracerPid:\t");
     
     for(EachIndex(Idx, Out.Size))
     {
@@ -216,16 +206,13 @@ LinuxMainEntryPoint(int ArgsCount, char **Args)
         u8 FileBuffer[ARG_MAX] = {0};
         int File = open("/proc/self/status", O_RDONLY);
         smm Size = read(File, FileBuffer, sizeof(FileBuffer));
-        str8 Out = {};
-        Out.Size = (umm)Size;
-        Out.Data = FileBuffer;
+        str8 Out = {FileBuffer, (umm)Size};
         
-        str8 TracerPidKey = S8Lit("TracerPid:\t");
+        str8 TracerPidKey = S8("TracerPid:\t");
         
         for(EachIndex(Idx, Out.Size))
         {
-            
-            str8 Search = S8Idx(Out, Idx);
+            str8 Search = S8From(Out, Idx);
             if(StringMatch(TracerPidKey, Search, true))
             {
                 Idx += TracerPidKey.Size;

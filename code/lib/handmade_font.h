@@ -392,7 +392,7 @@ DrawTextFormat(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font,
     Text.Data = PushArray(Arena, u8, 256);
     va_list Args;
     va_start(Args, Format);
-    Text.Size = (umm)stbsp_vsprintf((char *)Text.Data, Format, Args);
+    Text.Size = (umm)vsprintf((char *)Text.Data, Format, Args);
     
     DrawText(Buffer, Font, 16.0f, Text, v2{X, Y}, Color, false);
     

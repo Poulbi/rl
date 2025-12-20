@@ -45,13 +45,13 @@ LaneSyncU64(u64 *Value, s64 SourceIndex)
 {
     if(LaneIndex() == SourceIndex)
     {
-        MemoryCopy(ThreadContext->SharedStorage, Value, sizeof(u64));
+        *(u64 *)ThreadContext->SharedStorage = *(u64 *)Value;
     }
     LaneIceberg();
     
     if(LaneIndex() != SourceIndex)
     {
-        MemoryCopy(Value, ThreadContext->SharedStorage, sizeof(u64));
+        *(u64 *)Value = *(u64 *)ThreadContext->SharedStorage;
     }
     LaneIceberg();
 }

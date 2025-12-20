@@ -497,18 +497,18 @@ C_LINKAGE UPDATE_AND_RENDER(UpdateAndRender)
         
         {
             f32 HeightPx = 17.0f;
-            DrawText(Buffer, &App->Font, HeightPx, S8Lit("Generate"), v2{30.0f, Y}, ColorButtonText, false);
+            DrawText(Buffer, &App->Font, HeightPx, S8("Generate"), v2{30.0f, Y}, ColorButtonText, false);
             Y += 40.0f;
-            DrawText(Buffer, &App->Font, HeightPx, S8Lit("Clear"), v2{42.0f, Y}, ColorButtonText, false);
+            DrawText(Buffer, &App->Font, HeightPx, S8("Clear"), v2{42.0f, Y}, ColorButtonText, false);
             
             Y += 40.0f;
-            DrawText(Buffer, &App->Font, HeightPx, S8Lit("+10"), v2{48.0f, Y}, ColorButtonText, false);
+            DrawText(Buffer, &App->Font, HeightPx, S8("+10"), v2{48.0f, Y}, ColorButtonText, false);
             
             Y += 40.0f;
-            DrawText(Buffer, &App->Font, HeightPx, S8Lit("*10"), v2{48.0f, Y}, ColorButtonText, false);
+            DrawText(Buffer, &App->Font, HeightPx, S8("*10"), v2{48.0f, Y}, ColorButtonText, false);
             
             Y += 40.0f;
-            DrawText(Buffer, &App->Font, HeightPx, S8Lit("=10"), v2{48.0f, Y}, ColorButtonText, false);
+            DrawText(Buffer, &App->Font, HeightPx, S8("=10"), v2{48.0f, Y}, ColorButtonText, false);
             
             Y = 30.0f + 2.0f*14.0f;
             DrawTextFormat(CPUFrameArena, Buffer, &App->Font, 140.0f, Y, ColorBackground, "Points: %d", App->PointsCount); 

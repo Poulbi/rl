@@ -10,6 +10,7 @@ patterns =
     "*.m",
     "*.bat",
     "*.sh",
+    "*.mdesk",
     "*.4coder",
 };
 
@@ -18,15 +19,20 @@ blacklist_patterns =
     ".*",
 };
 
-load_paths_base = 
+paths = 
 {
-    { ".", .relative = true, .recursive = true, },
+    { .path = ".",           .recursive = false, .relative = true, },
+    { .path = "code",        .recursive = false, .relative = true, },
+    { .path = "code/base",   .recursive = true,  .relative = true, },
+    { .path = "code/lib",    .recursive = true,  .relative = true, },
+    { .path = "code/example",.recursive = true,  .relative = true, },
 };
 
-load_paths = {
-    .win = load_paths_base,
-    .linux = load_paths_base,
-    .mac = load_paths_base,
+load_paths =
+{
+    .win = paths,
+    .linux = paths,
+    .mac = paths,
 };
 
 commands =

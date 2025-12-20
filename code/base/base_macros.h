@@ -81,7 +81,13 @@ else                         { ErrorLog(Format, ##__VA_ARGS__); }\
 
 #define Minimum(A, B) (((A) < (B)) ? (A) : (B))
 #define Maximum(A, B) (((A) > (B)) ? (A) : (B))
-#define Swap(A, B)    do { typeof(A) temp = (typeof(A))A; A = B; B = temp; } while(0)
+
+#if !defined(__cplusplus)
+# define Swap(A, B) do { typeof(A) temp = (typeof(A))A; A = B; B = temp; } while(0)
+#else
+template <typename type> inline void 
+Swap(type& A, type& B) { type T = A; A = B; B = T; }
+#endif
 
 #define EachIndex(Index, Count) umm Index = 0; Index < (Count); Index += 1
 

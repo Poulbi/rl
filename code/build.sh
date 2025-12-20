@@ -18,9 +18,11 @@ release=0
 hash=0
 samples=0
 cuda=0
+example=0
+Targets="hash/samples/cuda/example"
 
 # Default
-[ "$#" = 0 ] && cuda=1
+[ "$#" = 0 ] && example=1
 
 for Arg in "$@"; do eval "$Arg=1"; done
 # Exclusive flags
@@ -96,11 +98,13 @@ C_Compile()
  Source="$1"
  Out="$2"
 
+ Flags="${3:-}"
+
  [ "$gcc"   = 1 ] && Compiler="g++"
  [ "$clang" = 1 ] && Compiler="clang"
  printf '[%s compile]\n' "$Compiler"
  
- CommonCompilerFlags="-DOS_LINUX=1 -fsanitize-trap -nostdinc++ -I$ScriptDirectory"
+ CommonCompilerFlags="-DOS_LINUX=1 -fsanitize-trap -nostdinc++ -fno-threadsafe-statics -I$ScriptDirectory"
  CommonWarningFlags="-Wall -Wextra -Wconversion -Wdouble-promotion -Wno-sign-conversion -Wno-sign-compare -Wno-double-promotion -Wno-unused-but-set-variable -Wno-unused-variable -Wno-write-strings -Wno-pointer-arith -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers"
  LinkerFlags=""
 
@@ -112,7 +116,7 @@ C_Compile()
 
  GCCFlags="-Wno-cast-function-type -Wno-missing-field-initializers -Wno-int-to-pointer-cast"
 
- Flags="$CommonCompilerFlags"
+ Flags="$CommonCompilerFlags $Flags"
  [ "$debug"   = 1 ] && Flags="$Flags $DebugFlags"
  [ "$release" = 1 ] && Flags="$Flags $ReleaseFlags"
  Flags="$Flags $CommonWarningFlags"
@@ -121,7 +125,8 @@ C_Compile()
  Flags="$Flags $LinkerFlags"
 
  printf '%s\n' "$Source"
- $Compiler $Flags "$(readlink -f "$Source")" -o "$Build"/"$Out" > "$Build/${Out}_compile.txt"
+ $Compiler $Flags "$(readlink -f "$Source")" -o "$Build"/"$Out"
+ $Compiler $Flags "$(readlink -f "$Source")" -o "$Build"/"$Out"
 
  DidWork=1
 }
@@ -135,13 +140,14 @@ Strip()
  printf '%s %s' "$Source" "$Out" 
 }
 
+#- Compilation
+
 [ "$hash" = 1 ] && C_Compile $(Strip ./hash/hash.c)
 if [ "$samples" = 1 ]
 then
-	ls lib
- CU_Compile $(Strip ./lib/cuda-samples/deviceQuery.cpp)
- CU_Compile $(Strip ./lib/cuda-samples/deviceQueryDrv.cpp) -lcuda
- CU_Compile $(Strip ./lib/cuda-samples/topologyQuery.cu)
+ CU_Compile $(Strip ./cuda-samples/deviceQuery.cpp)
+ CU_Compile $(Strip ./cuda-samples/deviceQueryDrv.cpp) -lcuda
+ CU_Compile $(Strip ./cuda-samples/topologyQuery.cu)
 fi
 
 if [ "$cuda" = 1 ]
@@ -150,10 +156,18 @@ then
  CU_Compile $(Strip ./cuda/platform.cpp) "-lX11"
 fi
 
+if [ "$example" = 1 ]
+then
+ C_Compile ./example/app.cpp app.so "-fPIC --shared -lm" 
+ C_Compile $(Strip ./example/platform.cpp) "-lm -lX11"
+fi
+
+#- End
+
 if [ "$DidWork" = 0 ]
 then
  printf 'ERROR: No valid build target provided.\n'
- printf 'Usage: %s <samples/cuda/hash>\n' "$0"
+ printf 'Usage: %s <%s>\n' "$0" "$Targets"
 else
  printf 'Done.\n' # 4coder bug
 fi

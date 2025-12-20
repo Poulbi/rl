@@ -13,7 +13,7 @@ struct tile
 };
 
 typedef struct tile_map tile_map;
-internal struct tile_map
+struct tile_map
 {
     tile Tiles[4096];
 };
