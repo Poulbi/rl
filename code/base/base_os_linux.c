@@ -31,8 +31,6 @@ struct os_thread
 };
 
 //~ Syscalls
-
-//- Debug utilities 
 internal void 
 AssertErrno(b32 Expression)
 {
@@ -130,63 +128,19 @@ OS_Allocate(umm Size)
     return Result;
 }
 
-#define ARG_MAX       131072	/* # bytes of args + environ for exec() */
-
-// Misc
-internal b32
-LinuxDebuggerIsAttached()
+internal s64 
+OS_GetWallClock()
 {
-    b32 IsAttached = false;
+    s64 Result = 0;
     
-    s32 TracerPid = 0;
+    struct timespec Counter;
+    clock_gettime(CLOCK_MONOTONIC, &Counter);
+    Result = (s64)Counter.tv_sec*1000000000 + (s64)Counter.tv_nsec;
     
-    u8 FileBuffer[ARG_MAX] = {0};
-    int File = open("/proc/self/status", O_RDONLY);
-    smm Size = read(File, FileBuffer, sizeof(FileBuffer));
-    str8 Out = {};
-    Out.Size = (umm)Size;
-    Out.Data = FileBuffer;
-    
-    str8 Search = S8("TracerPid:\t");
-    
-    for(EachIndex(Idx, Out.Size))
-    {
-        b32 Match = true;
-        
-        for(EachIndex(SearchIdx, Search.Size))
-        {
-            if(Idx < Out.Size &&
-               (Search.Data[SearchIdx] != Out.Data[Idx + SearchIdx]))
-            {
-                Match = false;
-                break;
-            }
-        }
-        
-        if(Match)
-        {
-            Idx += Search.Size;
-            
-            while(Idx < Out.Size && 
-                  (Out.Data[Idx] >= '0' && Out.Data[Idx] <= '9') &&
-                  Out.Data[Idx] != '\n')
-            {
-                s32 Digit = (s32)(Out.Data[Idx] - '0');
-                TracerPid = 10*TracerPid + Digit;
-                Idx += 1;
-            }
-            
-            break;
-        }
-        
-        while(Idx < Out.Size && Out.Data[Idx] != '\n') Idx += 1;
-    }
-    
-    IsAttached = !!TracerPid;
-    
-    return IsAttached;
+    return Result;
 }
 
+//~ Entrypoint
 ENTRY_POINT(ThreadInitEntryPoint)
 {
     ThreadInit(&Params->Context);
@@ -197,7 +151,6 @@ ENTRY_POINT(ThreadInitEntryPoint)
 #endif
 }
 
-//~ Entrypoint
 internal void 
 LinuxMainEntryPoint(int ArgsCount, char **Args)
 {

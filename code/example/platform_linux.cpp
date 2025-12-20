@@ -86,18 +86,6 @@ LinuxProcessKeyPress(app_button_state *ButtonState, b32 IsDown)
 }
 
 //~ Platform API
-internal s64 
-P_GetWallClock()
-{
-    s64 Result = 0;
-    
-    struct timespec Counter;
-    clock_gettime(CLOCK_MONOTONIC, &Counter);
-    Result = (s64)Counter.tv_sec*1000000000 + (s64)Counter.tv_nsec;
-    
-    return Result;
-}
-
 internal P_context
 P_ContextInit(arena *Arena, app_offscreen_buffer *Buffer, b32 *Running)
 {

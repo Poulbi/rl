@@ -1,13 +1,3 @@
-global u8 LogBuffer[Kilobytes(64)];
-
-internal void 
-OS_PrintFormat(char *Format, ...)
-{
-    va_list Args;
-    va_start(Args, Format);
-    vprintf(Format, Args);
-}
-
 internal str8 
 OS_ReadEntireFileIntoMemory(char *FileName)
 {
@@ -52,6 +42,51 @@ OS_ReadEntireFileIntoMemory(char *FileName)
             // TODO(casey): Logging
         }
     }
+    
+    return Result;
+}
+
+internal b32
+OS_WriteEntireFile()
+{
+    b32 Result = 0;
+    
+    return 0;
+}
+
+internal void 
+OS_PrintFormat(char *Format, ...)
+{
+    va_list Args;
+    va_start(Args, Format);
+    vprintf(Format, Args);
+}
+
+
+internal void
+OS_BarrierWait(barrier Barrier)
+{
+    
+}
+
+internal void 
+OS_SetThreadName(str8 ThreadName)
+{
+    
+}
+
+internal void *
+OS_Allocate(umm Size)
+{
+    void *Result = 0;
+    
+    return 0;
+}
+
+internal s64
+OS_GetWallClock(void)
+{
+    s64 Result = 0;
     
     return Result;
 }

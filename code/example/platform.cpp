@@ -39,7 +39,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         app_input *NewInput = &Input[0];
         app_input *OldInput = &Input[1];
         
-        s64 LastCounter = P_GetWallClock();
+        s64 LastCounter = OS_GetWallClock();
         s64 FlipWallClock = LastCounter;
         f32 GameUpdateHz = 60.0f;
         f32 TargetSecondsPerFrame = 1.0f/GameUpdateHz; 
@@ -99,7 +99,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             
             // Sleep
             {            
-                s64 WorkCounter = P_GetWallClock();
+                s64 WorkCounter = OS_GetWallClock();
                 f32 WorkMSPerFrame = P_MSElapsed(LastCounter, WorkCounter);
                 
                 f32 SecondsElapsedForFrame = P_SecondsElapsed(LastCounter, WorkCounter);
@@ -116,7 +116,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                         // TODO(luca): Logging
                     }
                     
-                    f32 TestSecondsElapsedForFrame = P_SecondsElapsed(LastCounter, P_GetWallClock());
+                    f32 TestSecondsElapsedForFrame = P_SecondsElapsed(LastCounter, OS_GetWallClock());
                     if(TestSecondsElapsedForFrame < TargetSecondsPerFrame)
                     {
                         // TODO(luca): Log missed sleep
@@ -125,7 +125,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                     // NOTE(luca): This is to help against sleep granularity.
                     while(SecondsElapsedForFrame < TargetSecondsPerFrame)
                     {
-                        SecondsElapsedForFrame = P_SecondsElapsed(LastCounter, P_GetWallClock());
+                        SecondsElapsedForFrame = P_SecondsElapsed(LastCounter, OS_GetWallClock());
                     }
                 }
                 else
@@ -133,7 +133,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                     // TODO(luca): Log missed frame rate!
                 }
                 
-                s64 EndCounter = P_GetWallClock();
+                s64 EndCounter = OS_GetWallClock();
                 
                 // Print elapsed time
                 {                
@@ -166,7 +166,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             
             P_UpdateImage(PlatformContext, &Buffer);
             
-            FlipWallClock = P_GetWallClock();
+            FlipWallClock = OS_GetWallClock();
             
             EndScratch(CPUFrameArena, CPUBackPos);
         }

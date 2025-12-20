@@ -16,14 +16,7 @@ struct entry_point_params
 #define ENTRY_POINT(Name) void *Name(entry_point_params *Params)
 typedef ENTRY_POINT(entry_point_func);
 
-#if __cplusplus
-extern "C"
-#endif
-
-ENTRY_POINT(EntryPoint);
-
-#define ErrorLog(Format, ...) OS_PrintFormat(ERROR_FMT Format "\n", ERROR_ARG, ##__VA_ARGS__) 
-#define Log(Format, ...)      OS_PrintFormat(Format, ##__VA_ARGS__)
+C_LINKAGE ENTRY_POINT(EntryPoint);
 
 internal str8  OS_ReadEntireFileIntoMemory(char *FileName);
 internal b32   OS_WriteEntireFile(char *FileName, str8 File);
@@ -32,5 +25,10 @@ internal void  OS_BarrierWait(barrier Barrier);
 internal void  OS_SetThreadName(str8 ThreadName);
 internal void *OS_Allocate(umm Size);
 internal void  OS_BarrierWait(barrier Barrier);
+internal s64   OS_GetWallClock(void);
+
+#define Log(Format, ...)      OS_PrintFormat(Format, ##__VA_ARGS__)
+// NOTE(luca): Append '\n', because this macro might be redefined into a visual error log.
+#define ErrorLog(Format, ...) Log(ERROR_FMT Format "\n", ERROR_ARG, ##__VA_ARGS__) 
 
 #endif //OS_H
