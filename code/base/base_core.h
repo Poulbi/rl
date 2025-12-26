@@ -100,30 +100,33 @@ Swap(type& A, type& B) { type T = A; A = B; B = T; }
 #endif
 
 #if OS_LINUX
-# define DebugBreak    do { if(GlobalDebuggerIsAttached) __asm__ volatile("int3"); else Trap(); } while(0)
+# define DebugBreak    do { if(GlobalDebuggerIsAttached) __asm__ volatile("int3"); } while(0)
 #elif OS_WINDOWS
 # define DebugBreak do { if(GlobalDebuggerIsAttached) Trap(); } while(0)
 #endif
 #define DebugBreakOnce do { local_persist b32 X = true; if(X) DebugBreak; X = false; } while(0)
 
 #if RL_INTERNAL
+# define TrapMsg(Format, ...) \
+do { ErrorLog(Format, ##__VA_ARGS__); Trap(); } while(0)
 # define AssertMsg(Expression, Format, ...) \
-do { if(!(Expression)) { ErrorLog(Format, ##__VA_ARGS__); DebugBreak; } } while(0)
+do { if(!(Expression)) TrapMsg(Format, ##__VA_ARGS__); } while(0)
 # define Assert(Expression) AssertMsg(Expression, "Hit assertion")
 #else
 # define AssertMsg(...)     NoOp
 # define Assert(Expression) NoOp
 #endif
 
-#define NotImplemented AssertMsg(0, "Not Implemented!")
-#define InvalidPath    AssertMsg(0, "Invalid Path!")
+#define NotImplemented TrapMsg("Not Implemented!")
+#define InvalidPath    TrapMsg("Invalid Path!")
 #define StaticAssert(C, ID) global_variable u8 Glue(ID, __LINE__)[(C)?1:-1]
 
 //- 
-#define EachIndex(Index, Count)      (umm Index = 0; Index < (Count); Index += 1)
-#define EachElement(Index, Array)    (umm Index = 0; Index < ArrayCount(Array); Index += 1)
-#define EachInRange(Index, Range)    (umm Index = (Range).Min; Index < (Range).Max; Index += 1)
-#define EachNode(Index, type, First) (type *Index = First; Index != 0; Index = Index->next)
+#define EachIndexType(type, Index, Count) (type Index = 0; Index < (Count); Index += 1)
+#define EachIndex(Index, Count)           EachIndexType(umm, Index, Count)
+#define EachElement(Index, Array)         EachIndexType(umm, Index, ArrayCount(Array))
+#define EachInRange(Index, Range)         (umm Index = (Range).Min; Index < (Range).Max; Index += 1)
+#define EachNode(Index, type, First)      (type *Index = First; Index != 0; Index = Index->next)
 
 #define MemoryCopy memcpy
 #define MemorySet  memset

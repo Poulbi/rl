@@ -18,11 +18,12 @@ release=0
 hash=0
 samples=0
 cuversine=0
-example=0
-Targets="hash/samples/cuversine/example"
+example_app=0
+example_sort=0
+Targets="hash/samples/cuversine/example_app/example_sort"
 
 # Default
-[ "$#" = 0 ] && example=1
+[ "$#" = 0 ] && example_app=1
 
 for Arg in "$@"; do eval "$Arg=1"; done
 # Exclusive flags
@@ -108,10 +109,7 @@ C_Compile()
  CommonWarningFlags="-Wall -Wextra -Wconversion -Wdouble-promotion -Wno-sign-conversion -Wno-sign-compare -Wno-double-promotion -Wno-unused-but-set-variable -Wno-unused-variable -Wno-write-strings -Wno-pointer-arith -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers"
  LinkerFlags=""
 
- DebugFlags="
-  -g -ggdb -g3 
-  -DRL_INTERNAL=1 -DRL_SLOW=1
- "
+ DebugFlags="-g -ggdb -g3 -DRL_INTERNAL=1 -DRL_SLOW=1 -DRL_PROFILE=0"
  ReleaseFlags="-O3"
 
  ClangFlags="-fdiagnostics-absolute-paths -fsanitize-undefined-trap-on-error -ftime-trace
@@ -159,11 +157,15 @@ then
  CU_Compile $(Strip ./cuversine/platform.cpp) "-lX11"
 fi
 
-if [ "$example" = 1 ]
-then
- C_Compile ./example/ex_app.cpp app.so "-fPIC --shared -lm -DBASE_NO_ENTRYPOINT=1" 
- C_Compile $(Strip ./example/ex_platform.cpp) "-lX11"
-fi
+Platform=0
+AppCompile()
+{
+ C_Compile "$1" app.so "-fPIC --shared -lm -DBASE_NO_ENTRYPOINT=1"
+ Platform=1
+}
+[ "$example_app"  = 1 ] && AppCompile ./example/ex_app.cpp 
+[ "$example_sort" = 1 ] && AppCompile ./example/ex_app_sort.cpp 
+[ "$Platform"     = 1 ] && C_Compile $(Strip ./example/ex_platform.cpp) "-lX11 -lGL -lGLX"
 
 #- End
 

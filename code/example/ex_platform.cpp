@@ -9,7 +9,11 @@
 
 UPDATE_AND_RENDER(UpdateAndRenderStub) {}
 
+#if 1
 #define AppLog(Format, ...) do {if(*Running)Log(Format, ##__VA_ARGS__);} while(0)
+#else
+#define AppLog(Format, ...) NoOp
+#endif
 
 C_LINKAGE ENTRY_POINT(EntryPoint)
 {
@@ -29,6 +33,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         Buffer.Pitch = Buffer.BytesPerPixel*Buffer.Width;
         Buffer.Pixels = PushArray(PermanentCPUArena, u8, Buffer.Pitch*Buffer.Height);
         
+        DebugBreak;
         P_context PlatformContext = P_ContextInit(PermanentCPUArena, &Buffer, Running);
         if(!PlatformContext)
         {
@@ -60,6 +65,8 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         
         while(*Running)
         {
+            OS_profiler Profiler = OS_ProfileInit();
+            
             umm CPUBackPos = BeginScratch(CPUFrameArena);
             
             // Prepare  Input
@@ -71,6 +78,8 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                     NewInput->Buttons[Idx].HalfTransitionCount = 0;
                 }
             }
+            
+            OS_ProfileAndPrint("Input", &Profiler);
             
 #if OS_LINUX      
             // Load application code
@@ -101,6 +110,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                         if(UpdateAndRender)
                         {
                             Log("\nLibrary reloaded.\n");
+                            AppState.Reloaded = true;
                         }
                         else
                         {
@@ -109,16 +119,19 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                         }
                     }
                 }
+                Assert(UpdateAndRender);
             }
             
-            Assert(UpdateAndRender);
+            OS_ProfileAndPrint("Code", &Profiler);
+            
 #endif
             
             P_ProcessMessages(PlatformContext, NewInput, &Buffer, Running);
             
+            OS_ProfileAndPrint("Messages", &Profiler);
 #if 1            
             NewInput->Text.Buffer[NewInput->Text.Count].Codepoint = 0;
-            AppLog(" '%c' (%d, %d) 1:%c 2:%c 3:%c ", 
+            AppLog("'%c' (%d, %d) 1:%c 2:%c 3:%c", 
                    (u8)NewInput->Text.Buffer[0].Codepoint,
                    NewInput->MouseX, NewInput->MouseY,
                    (NewInput->Buttons[PlatformButton_Left  ].EndedDown ? 'x' : 'o'),
@@ -128,12 +141,15 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             
             UpdateAndRender(ThreadContext, &AppState, CPUFrameArena, &Buffer, NewInput);
             
+            OS_ProfileAndPrint("UpdateAndRender", &Profiler);
+            
+            
             // Sleep
             {            
                 s64 WorkCounter = OS_GetWallClock();
-                f32 WorkMSPerFrame = P_MSElapsed(LastCounter, WorkCounter);
+                f32 WorkMSPerFrame = OS_MSElapsed(LastCounter, WorkCounter);
                 
-                f32 SecondsElapsedForFrame = P_SecondsElapsed(LastCounter, WorkCounter);
+                f32 SecondsElapsedForFrame = OS_SecondsElapsed(LastCounter, WorkCounter);
                 if(SecondsElapsedForFrame < TargetSecondsPerFrame)
                 {
                     f32 SleepUS = ((TargetSecondsPerFrame - 0.001f - SecondsElapsedForFrame)*1000000.0f);
@@ -147,7 +163,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                         // TODO(luca): Logging
                     }
                     
-                    f32 TestSecondsElapsedForFrame = P_SecondsElapsed(LastCounter, OS_GetWallClock());
+                    f32 TestSecondsElapsedForFrame = OS_SecondsElapsed(LastCounter, OS_GetWallClock());
                     if(TestSecondsElapsedForFrame < TargetSecondsPerFrame)
                     {
                         // TODO(luca): Log missed sleep
@@ -156,7 +172,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                     // NOTE(luca): This is to help against sleep granularity.
                     while(SecondsElapsedForFrame < TargetSecondsPerFrame)
                     {
-                        SecondsElapsedForFrame = P_SecondsElapsed(LastCounter, OS_GetWallClock());
+                        SecondsElapsedForFrame = OS_SecondsElapsed(LastCounter, OS_GetWallClock());
                     }
                 }
                 else
@@ -168,7 +184,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                 
                 // Print elapsed time
                 {                
-                    f32 MSPerFrame = P_MSElapsed(LastCounter, EndCounter);
+                    f32 MSPerFrame = OS_MSElapsed(LastCounter, EndCounter);
                     
                     // TODO(luca): Print a recent average instead.
                     
@@ -190,7 +206,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                     
                     f32 FPS = Min(1000.0f/LastMSPerFrame, GameUpdateHz);
                     
-                    AppLog("%.2fms/f %.0fFPS", (f64)LastMSPerFrame, (f64)FPS);
+                    AppLog(" %.2fms/f %.0fFPS", (f64)LastMSPerFrame, (f64)FPS);
                 }
                 
                 AppLog("\n");
@@ -200,7 +216,11 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             
             Swap(OldInput, NewInput);
             
+            OS_ProfileAndPrint("Sleep", &Profiler);
+            
             P_UpdateImage(PlatformContext, &Buffer);
+            
+            OS_ProfileAndPrint("UpdateImage", &Profiler);
             
             FlipWallClock = OS_GetWallClock();
             

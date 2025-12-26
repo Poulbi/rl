@@ -1,10 +1,18 @@
 #include "base/base.h"
-
+//- OpenGL 
+#include <GL/gl.h>
+#include <GL/glx.h>
+#define GLX_CONTEXT_MAJOR_VERSION_ARB       0x2091
+#define GLX_CONTEXT_MINOR_VERSION_ARB       0x2092
+typedef GLXContext (*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, 
+                                                     const int*);
+//- X11 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysymdef.h>
 #include <X11/extensions/Xrandr.h>
 #include <X11/cursorfont.h>
+//- Linux 
 #include <signal.h>
 #include <dlfcn.h>
 
@@ -16,10 +24,19 @@ struct linux_x11_context
     GC DefaultGC;
     XIC InputContext;
     Atom WM_DELETE_WINDOW;
+    b32 OpenGLMode;
     b32 Initialized;
 };
 
 global_variable b32 *GlobalRunning;
+global_variable b32 XCtxError;
+
+//- Helpers 
+static int XCtxErrorHandler(Display *dpy, XErrorEvent *ev)
+{
+    XCtxError = true;
+    return 0;
+}
 
 internal rune
 ConvertUTF8StringToRune(u8 UTF8String[4])
@@ -62,6 +79,44 @@ ConvertUTF8StringToRune(u8 UTF8String[4])
     return Codepoint;
 }
 
+
+// Check for extension string presence.  Adapted from: http://www.opengl.org/resources/features/OGLextensions/
+internal b32
+IsExtensionSupported(const char *ExtList, char *Extension)
+{
+    b32 Result = false;
+    
+    const char *Start;
+    const char *Where, *Terminator;
+    
+    // Extension names should not have spaces.
+    Where = strchr(Extension, ' ');
+    if(Where && *Extension != '\0')
+    {    
+        Start = ExtList;
+        Where = strstr(Start, Extension);
+        while(Where)
+        {
+            Terminator = Where + strlen(Extension);
+            
+            if(Where == Start || *(Where - 1) == ' ')
+            {
+                if(*Terminator == ' ' || *Terminator == '\0')
+                {
+                    Result = true;
+                    break;
+                }
+                
+                Start = Terminator;
+            }
+            
+            Where = strstr(Start, Extension);
+        }
+    }
+    
+    return Result;
+}
+
 internal void
 LinuxSigIntHandler(int Signal)
 {
@@ -74,7 +129,7 @@ LinuxProcessKeyPress(app_button_state *ButtonState, b32 IsDown)
     if(ButtonState->EndedDown != IsDown)
     {
         ButtonState->EndedDown = IsDown;
-        ButtonState->HalfTransitionCount++;
+        ButtonState->HalfTransitionCount += 1;
     }
 }
 
@@ -82,6 +137,7 @@ LinuxProcessKeyPress(app_button_state *ButtonState, b32 IsDown)
 internal P_context
 P_ContextInit(arena *Arena, app_offscreen_buffer *Buffer, b32 *Running)
 {
+    b32 OpenGLMode = true;
     P_context Result = 0;
     s32 XRet = 0;
     char *WindowName = "Handmade Window";
@@ -91,21 +147,113 @@ P_ContextInit(arena *Arena, app_offscreen_buffer *Buffer, b32 *Running)
     GlobalRunning = Running;
     signal(SIGINT, LinuxSigIntHandler);
     
-    Context->DisplayHandle = XOpenDisplay(0);
-    if(Context->DisplayHandle)
+    Display *DisplayHandle = XOpenDisplay(0);
+    
+    if(DisplayHandle)
     {
-        Window RootWindow = XDefaultRootWindow(Context->DisplayHandle);
-        s32 Screen = XDefaultScreen(Context->DisplayHandle);
-        s32 ScreenBitDepth = 24;
+        Window RootWindow = XDefaultRootWindow(DisplayHandle);
+        s32 ScreenHandle = XDefaultScreen(DisplayHandle);
+        
+        b32 Found = false;
         XVisualInfo WindowVisualInfo = {};
-        if(XMatchVisualInfo(Context->DisplayHandle, Screen, ScreenBitDepth, TrueColor, &WindowVisualInfo))
+        GLXFBConfig FBConfig = {};
+        
+        if(!OpenGLMode)
         {
+            s32 ScreenBitDepth = 24;
+            Found = XMatchVisualInfo(DisplayHandle, ScreenHandle, ScreenBitDepth, TrueColor, &WindowVisualInfo);
+        }
+        
+        if(OpenGLMode)
+        {       
+            int VisualAttributes[] =
+            {
+                GLX_X_RENDERABLE    , True,
+                GLX_DRAWABLE_TYPE   , GLX_WINDOW_BIT,
+                GLX_RENDER_TYPE     , GLX_RGBA_BIT,
+                GLX_X_VISUAL_TYPE   , GLX_TRUE_COLOR,
+                GLX_RED_SIZE        , 8,
+                GLX_GREEN_SIZE      , 8,
+                GLX_BLUE_SIZE       , 8,
+                GLX_ALPHA_SIZE      , 8,
+                GLX_DEPTH_SIZE      , 24,
+                GLX_STENCIL_SIZE    , 8,
+                GLX_DOUBLEBUFFER    , True,
+                //GLX_SAMPLE_BUFFERS  , 1,
+                //GLX_SAMPLES         , 4,
+                None
+            };
+            
+            int Major, Minor;
+            b32 IsCorrectVersion = glXQueryVersion(DisplayHandle, &Major, &Minor);
+            IsCorrectVersion |= (((Major == 1) && (Minor < 3)) || (Major < 1));
+            
+            if(IsCorrectVersion)
+            {
+                int FBConfigsCount;
+                GLXFBConfig* FBConfigs = glXChooseFBConfig(DisplayHandle, ScreenHandle, VisualAttributes, &FBConfigsCount);
+                
+                if(FBConfigs)
+                {
+                    s32 BestFBIdx = -1, WorstFBIdx = -1, BestSamples = -1, WorstSamples = 999;
+                    
+                    for EachIndexType(s32, FBIdx, FBConfigsCount)
+                    {
+                        XVisualInfo *DisplayVisualInfo = glXGetVisualFromFBConfig(DisplayHandle, FBConfigs[FBIdx]);
+                        if(DisplayVisualInfo)
+                        {
+                            int SampleBuffers, SamplesCount;
+                            glXGetFBConfigAttrib(DisplayHandle, FBConfigs[FBIdx], GLX_SAMPLE_BUFFERS, &SampleBuffers);
+                            glXGetFBConfigAttrib(DisplayHandle, FBConfigs[FBIdx], GLX_SAMPLES, &SamplesCount);
+                            
+#if 0
+                            Log(" Matching FBConfigsonfig %d, DisplayVisualInfosual ID 0x%2x: "
+                                "SAMPLE_BUFFERS = %d, SAMPLES = %d\n", 
+                                FBIdx, DisplayVisualInfo->visualid, SampleBuffers, SamplesCount);
+#endif
+                            
+                            if(BestFBIdx < 0 || (SampleBuffers && SamplesCount > BestSamples))
+                            {
+                                BestFBIdx = FBIdx;
+                                BestSamples = SamplesCount;
+                            }
+                            if(WorstFBIdx < 0 || !SampleBuffers || SamplesCount < WorstSamples)
+                            {
+                                WorstFBIdx = FBIdx;
+                                WorstSamples = SamplesCount;
+                            }
+                            XFree(DisplayVisualInfo);
+                        }
+                    }
+                    
+                    FBConfig = FBConfigs[BestFBIdx];
+                    XFree(FBConfigs);
+                    
+                    XVisualInfo *Info = glXGetVisualFromFBConfig(DisplayHandle, FBConfig);
+                    WindowVisualInfo = *Info;
+                    
+                    Found = true;
+                }
+                else
+                {
+                    TrapMsg("Failed to retrieve a framebuffer config");
+                }
+            }
+            else
+            {
+                TrapMsg("Invalid GLX version");
+            }
+        }
+        
+        if(Found)
+        {
+            
             XSetWindowAttributes WindowAttributes = {};
             WindowAttributes.bit_gravity = StaticGravity;
 #if RL_INTERNAL            
             WindowAttributes.background_pixel = 0xFF00FF;
 #endif
-            WindowAttributes.colormap = XCreateColormap(Context->DisplayHandle, RootWindow, WindowVisualInfo.visual, AllocNone);
+            WindowAttributes.colormap = XCreateColormap(DisplayHandle, RootWindow, WindowVisualInfo.visual, AllocNone);
             WindowAttributes.event_mask = (StructureNotifyMask | 
                                            KeyPressMask | KeyReleaseMask | 
                                            ButtonPressMask | ButtonReleaseMask |
@@ -118,59 +266,150 @@ P_ContextInit(arena *Arena, app_offscreen_buffer *Buffer, b32 *Running)
             // NOTE(luca): Align window with the right edge of the screen.
             s32 X = ScreenWidth - Buffer->Width; 
             s32 Y = 0; 
-            Context->WindowHandle = XCreateWindow(Context->DisplayHandle, RootWindow,
-                                                  X, Y, Buffer->Width, Buffer->Height,
-                                                  0,
-                                                  WindowVisualInfo.depth, InputOutput,
-                                                  WindowVisualInfo.visual, WindowAttributeMask, &WindowAttributes);
-            if(Context->WindowHandle)
+            Window WindowHandle = XCreateWindow(DisplayHandle, RootWindow,
+                                                X, Y, Buffer->Width, Buffer->Height,
+                                                0,
+                                                WindowVisualInfo.depth, InputOutput,
+                                                WindowVisualInfo.visual, WindowAttributeMask, &WindowAttributes);
+            
+            if(WindowHandle)
             {
-                XRet = XStoreName(Context->DisplayHandle, Context->WindowHandle, WindowName);
-                
-                // NOTE(luca): If we set the MaxWidth and MaxHeigth to the same values as MinWidth and MinHeight there is a bug on dwm where it won't update the window decorations when trying to remove them.
-                // In the future we will allow resizing to any size so this does not matter that much.
+                // Window attributes and hints
+                {            
+                    XRet = XStoreName(DisplayHandle, WindowHandle, WindowName);
+                    
+                    // NOTE(luca): If we set the MaxWidth and MaxHeigth to the same values as MinWidth and MinHeight there is a bug on dwm where it won't update the window decorations when trying to remove them.
+                    // In the future we will allow resizing to any size so this does not matter that much.
 #if 0                    
-                LinuxSetSizeHint(Context->DisplayHandle, Context->WindowHandle, 0, 0, 0, 0);
+                    LinuxSetSizeHint(DisplayHandle, WindowHandle, 0, 0, 0, 0);
 #endif
-                
-                // NOTE(luca): Tiling window managers should treat windows with the WM_TRANSIENT_FOR property as pop-up windows.  This way we ensure that we will be a floating window.  This works on my setup (dwm). 
-                XRet = XSetTransientForHint(Context->DisplayHandle, Context->WindowHandle, RootWindow);
-                
-                XClassHint ClassHint = {};
-                ClassHint.res_name = WindowName;
-                ClassHint.res_class = WindowName;
-                XSetClassHint(Context->DisplayHandle, Context->WindowHandle, &ClassHint);
-                
-                XSetLocaleModifiers("");
-                
-                XIM InputMethod = XOpenIM(Context->DisplayHandle, 0, 0, 0);
-                if(!InputMethod){
-                    XSetLocaleModifiers("@im=none");
-                    InputMethod = XOpenIM(Context->DisplayHandle, 0, 0, 0);
+                    
+                    // NOTE(luca): Tiling window managers should treat windows with the WM_TRANSIENT_FOR property as pop-up windows.  This way we ensure that we will be a floating window.  This works on my setup (dwm). 
+                    XRet = XSetTransientForHint(DisplayHandle, WindowHandle, RootWindow);
+                    
+                    XClassHint ClassHint = {};
+                    ClassHint.res_name = WindowName;
+                    ClassHint.res_class = WindowName;
+                    XSetClassHint(DisplayHandle, WindowHandle, &ClassHint);
                 }
-                Context->InputContext = XCreateIC(InputMethod,
-                                                  XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
-                                                  XNClientWindow, Context->WindowHandle,
-                                                  XNFocusWindow,  Context->WindowHandle,
-                                                  NULL);
-                XSetICFocus(Context->InputContext);
                 
-                s32 BitsPerPixel = Buffer->BytesPerPixel*8;
-                Context->WindowImage = XCreateImage(Context->DisplayHandle, WindowVisualInfo.visual, WindowVisualInfo.depth, ZPixmap, 0, (char *)Buffer->Pixels, Buffer->Width, Buffer->Height, BitsPerPixel, 0);
-                Context->DefaultGC = DefaultGC(Context->DisplayHandle, Screen);
+                // Input method
+                {            
+                    XSetLocaleModifiers("");
+                    
+                    XIM InputMethod = XOpenIM(DisplayHandle, 0, 0, 0);
+                    if(!InputMethod){
+                        XSetLocaleModifiers("@im=none");
+                        InputMethod = XOpenIM(DisplayHandle, 0, 0, 0);
+                    }
+                    Context->InputContext = XCreateIC(InputMethod,
+                                                      XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
+                                                      XNClientWindow, WindowHandle,
+                                                      XNFocusWindow,  WindowHandle,
+                                                      NULL);
+                    XSetICFocus(Context->InputContext);
+                }
                 
-                XRet = XMapWindow(Context->DisplayHandle, Context->WindowHandle);
-                XRet = XFlush(Context->DisplayHandle);
+                XRet = XMapWindow(DisplayHandle, WindowHandle);
                 
-                Context->WM_DELETE_WINDOW = XInternAtom(Context->DisplayHandle, "WM_DELETE_WINDOW", False);
-                XRet = XSetWMProtocols(Context->DisplayHandle, Context->WindowHandle, 
+                if(!OpenGLMode)
+                {            
+                    s32 BitsPerPixel = Buffer->BytesPerPixel*8;
+                    Context->WindowImage = XCreateImage(DisplayHandle, WindowVisualInfo.visual, WindowVisualInfo.depth, ZPixmap, 0, (char *)Buffer->Pixels, Buffer->Width, Buffer->Height, BitsPerPixel, 0);
+                }
+                
+                if(OpenGLMode)
+                {
+                    const char *glxExts = glXQueryExtensionsString(DisplayHandle, ScreenHandle);
+                    
+                    // NOTE: It is not necessary to create or make current to a context before
+                    // calling glXGetProcAddressARB
+                    glXCreateContextAttribsARBProc glXCreateContextAttribsARB = 0;
+                    glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc)
+                        glXGetProcAddressARB((const GLubyte *) "glXCreateContextAttribsARB");
+                    
+                    GLXContext GLContext = 0;
+                    
+                    XCtxError = false;
+                    int (*XOldErrorHandler)(Display*, XErrorEvent*) =
+                        XSetErrorHandler(&XCtxErrorHandler);
+                    
+                    if(IsExtensionSupported(glxExts, "GLX_ARB_create_context") &&
+                       glXCreateContextAttribsARB)
+                    {
+                        int context_attribs[] =
+                        {
+#if 0
+                            GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
+                            GLX_CONTEXT_MINOR_VERSION_ARB, 3,
+#else
+                            GLX_CONTEXT_MAJOR_VERSION_ARB, 2,
+                            GLX_CONTEXT_MINOR_VERSION_ARB, 0,
+#endif
+                            None
+                        };
+                        
+                        GLContext = glXCreateContextAttribsARB(DisplayHandle, FBConfig, 0,
+                                                               True, context_attribs);
+                        
+                        // Sync to ensure any errors generated are processed.
+                        XSync(DisplayHandle, False);
+                        if(XCtxError || !GLContext)
+                        {
+                            // GLX_CONTEXT_MAJOR_VERSION_ARB = 1
+                            context_attribs[1] = 1;
+                            // GLX_CONTEXT_MINOR_VERSION_ARB = 0
+                            context_attribs[3] = 0;
+                            
+                            XCtxError = false;
+                            
+                            ErrorLog("Failed to create GL 3.0 context, using old-style GLX 2.x context\n");
+                            GLContext = glXCreateContextAttribsARB(DisplayHandle, FBConfig, 0, 
+                                                                   True, context_attribs);
+                        }
+                    }
+                    else
+                    {
+                        // Use GLX 1.3 context creation method.
+                        GLContext = glXCreateNewContext(DisplayHandle, FBConfig, GLX_RGBA_TYPE, 0, True);
+                    }
+                    
+                    XSync(DisplayHandle, false);
+                    XSetErrorHandler(XOldErrorHandler);
+                    
+                    if(GLContext && !XCtxError)
+                    {
+                        b32 IsGLXDirect = glXIsDirect(DisplayHandle, GLContext);
+                        
+                        glXMakeCurrent(DisplayHandle, WindowHandle, GLContext);
+                    }
+                    else
+                    {
+                        ErrorLog("Could not create OpenGL context.");
+                    }
+                }
+                
+                Context->DefaultGC = DefaultGC(DisplayHandle, ScreenHandle);
+                
+                XRet = XFlush(DisplayHandle);
+                
+                Context->WM_DELETE_WINDOW = XInternAtom(DisplayHandle, "WM_DELETE_WINDOW", False);
+                XRet = XSetWMProtocols(DisplayHandle, WindowHandle, 
                                        &Context->WM_DELETE_WINDOW, 1);
                 Assert(XRet);
-                Context->Initialized = true;
                 
+                Context->DisplayHandle = DisplayHandle;
+                Context->WindowHandle = WindowHandle;
+                Context->OpenGLMode = OpenGLMode;
+                Context->Initialized = true;
                 Result = (umm)Context;
             }
         }
+        else
+        {
+            ErrorLog("Could not find matching visual info");
+        }
+        
     }
     
     return Result;
@@ -278,19 +517,20 @@ P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buf
                                 if((Codepoint >= ' ' || Codepoint < 0) ||
                                    Codepoint == '\r' || Codepoint == '\b' || Codepoint == '\n')
                                 {                            
-                                    app_text_button *TextButton = &Input->Text.Buffer[Input->Text.Count++];
+                                    app_text_button *TextButton = &Input->Text.Buffer[Input->Text.Count];
+                                    Input->Text.Count += 1;
                                     TextButton->Codepoint = Codepoint;
                                     TextButton->Shift   = (WindowEvent.xkey.state & ShiftMask);
                                     TextButton->Control = (WindowEvent.xkey.state & ControlMask);
                                     TextButton->Alt     = (WindowEvent.xkey.state & Mod1Mask);
 #if 0                           
-                                    printf("%d bytes '%c' %d (%c|%c|%c)\n", 
-                                           BytesLookepdUp, 
-                                           ((Codepoint >= ' ') ? (char)Codepoint : '\0'),
-                                           Codepoint,
-                                           ((WindowEvent.xkey.state & ShiftMask)   ? 'S' : ' '),
-                                           ((WindowEvent.xkey.state & ControlMask) ? 'C' : ' '),
-                                           ((WindowEvent.xkey.state & Mod1Mask)    ? 'A' : ' '));
+                                    Log("%d bytes '%c' %d (%c|%c|%c)\n", 
+                                        BytesLookepdUp, 
+                                        ((Codepoint >= ' ') ? (char)Codepoint : '\0'),
+                                        Codepoint,
+                                        ((WindowEvent.xkey.state & ShiftMask)   ? 'S' : ' '),
+                                        ((WindowEvent.xkey.state & ControlMask) ? 'C' : ' '),
+                                        ((WindowEvent.xkey.state & Mod1Mask)    ? 'A' : ' '));
 #endif
                                 }
                                 else
@@ -402,11 +642,20 @@ P_UpdateImage(P_context Context, app_offscreen_buffer *Buffer)
     linux_x11_context *Linux = (linux_x11_context *)Context;
 	if(Linux)
 	{
-        XPutImage(Linux->DisplayHandle,
-                  Linux->WindowHandle, 
-                  Linux->DefaultGC, 
-                  Linux->WindowImage, 0, 0, 0, 0, 
-                  Buffer->Width, 
-                  Buffer->Height);
+        if(!Linux->OpenGLMode)
+        {
+            XPutImage(Linux->DisplayHandle,
+                      Linux->WindowHandle, 
+                      Linux->DefaultGC, 
+                      Linux->WindowImage, 0, 0, 0, 0, 
+                      Buffer->Width, 
+                      Buffer->Height);
+        }
+        
+        if(Linux->OpenGLMode)
+        {
+            glXSwapBuffers(Linux->DisplayHandle, Linux->WindowHandle);
+        }
+        
 	}
 }

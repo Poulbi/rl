@@ -99,6 +99,7 @@ struct app_state
     
 #if RL_INTERNAL
     b32 DebuggerAttached;
+    b32 Reloaded;
 #endif
     
     b32 Initialized;
@@ -115,20 +116,4 @@ typedef umm P_context;
 internal P_context P_ContextInit(arena *Arena, app_offscreen_buffer *Buffer, b32 *Running);
 internal void      P_UpdateImage(P_context Context, app_offscreen_buffer *Buffer);
 internal void      P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buffer, b32 *Running);
-
-//- Helpers 
-internal inline f32
-P_SecondsElapsed(s64 Start, s64 End)
-{
-    f32 Result = ((f32)(End - Start)/1000000000.0f);
-    return Result;
-}
-
-internal inline f32
-P_MSElapsed(s64 Start, s64 End)
-{
-    f32 Result = ((f32)(End - Start)/1000000.0f);
-    return Result;
-}
-
 #endif //PLATFORM_H

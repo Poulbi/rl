@@ -60,10 +60,23 @@ OS_ReadEntireFileIntoMemory(char *FileName)
             Result.Size = (umm)StatBuffer.st_size;
             Result.Data = (u8 *)mmap(0, Result.Size, PROT_READ, MAP_PRIVATE, File, 0);
             AssertErrno(Result.Data != MAP_FAILED);
+            
+            close(File);
         }
+        else
+        {
+            ErrorLog("Could not read file '%s', Errno(%d): %s", FileName, errno, strerror(errno));
+        }
+        
     }
     
     return Result;
+}
+
+internal void
+OS_FreeFileMemory(str8 File)
+{
+    munmap(File.Data, File.Size);
 }
 
 internal b32
