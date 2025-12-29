@@ -20,6 +20,9 @@
 #include <dlfcn.h>
 #include "base_arenas.h"
 
+#define ERRNO_FMT "Errno(%d): %s"
+#define ERRNO_ARG errno, strerror(errno)
+
 //~ Types
 typedef void *pthread_entry_point_func(void *);
 
@@ -65,7 +68,7 @@ OS_ReadEntireFileIntoMemory(char *FileName)
         }
         else
         {
-            ErrorLog("Could not read file '%s', Errno(%d): %s", FileName, errno, strerror(errno));
+            ErrorLog("Could not read file '%s', " ERRNO_FMT, FileName, ERRNO_ARG);
         }
         
     }

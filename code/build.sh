@@ -110,7 +110,7 @@ C_Compile()
  CommonWarningFlags="-Wall -Wextra -Wconversion -Wdouble-promotion -Wno-sign-conversion -Wno-sign-compare -Wno-double-promotion -Wno-unused-but-set-variable -Wno-unused-variable -Wno-write-strings -Wno-pointer-arith -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers"
  LinkerFlags=""
 
- DebugFlags="-g -ggdb -g3 -DRL_INTERNAL=1 -DRL_SLOW=1 -DRL_PROFILE=1"
+ DebugFlags="-g -ggdb -g3 -DRL_INTERNAL=1 -DRL_SLOW=1 -DRL_PROFILE=0"
  ReleaseFlags="-O3"
 
  ClangFlags="-fdiagnostics-absolute-paths -fsanitize-undefined-trap-on-error -ftime-trace

@@ -12,6 +12,7 @@ patterns =
     "*.sh",
     "*.mdesk",
     "*.4coder",
+    "*.glsl",
 };
 
 blacklist_patterns = 

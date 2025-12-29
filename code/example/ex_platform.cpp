@@ -1,6 +1,8 @@
 #include "base/base.h"
 #include "ex_platform.h"
 
+#include "lib/md5.h"
+
 #if OS_LINUX
 # include "ex_platform_linux.cpp"
 #elif OS_WINDOWS
@@ -15,11 +17,68 @@ UPDATE_AND_RENDER(UpdateAndRenderStub) {}
 #define AppLog(Format, ...) NoOp
 #endif
 
+typedef struct app_code app_code;
+struct app_code
+{
+    update_and_render *UpdateAndRender;
+    
+    b32 Loaded;
+    char *LibraryPath;
+};
+
+internal void
+LinuxLoadAppCode(app_code *Code, app_state *AppState, struct timespec *LastWriteTime, void **Library)
+{
+    struct stat Stats = {};
+    stat(Code->LibraryPath, &Stats);
+    umm Size = Stats.st_size;
+    struct timespec CurrentWriteTime = Stats.st_mtim;
+    b32 WasWritten = !(CurrentWriteTime.tv_sec == LastWriteTime->tv_sec && 
+                       CurrentWriteTime.tv_nsec == LastWriteTime->tv_nsec);
+    
+    if(Size && (!Code->Loaded || WasWritten))
+    {
+        *LastWriteTime = CurrentWriteTime;
+        
+        if(*Library)
+        {
+            dlclose(*Library);
+        }
+        
+        *Library = dlopen(Code->LibraryPath, RTLD_NOW);
+        if(*Library)
+        {
+            // Load code from library
+            Code->UpdateAndRender = (update_and_render *)dlsym(*Library, "UpdateAndRender");
+            if(Code->UpdateAndRender)
+            {
+                AppState->Reloaded = true;
+                Code->Loaded = true;
+                Log("\nLibrary reloaded.\n");
+            }
+            else
+            {
+                Code->Loaded = false;
+                ErrorLog("Could not find UpdateAndRender.");
+            }
+        }
+        else
+        {
+            Code->Loaded = false;
+            ErrorLog("%s", dlerror());
+        }
+    }
+    
+    if(!Code->Loaded)
+    {
+        Code->UpdateAndRender = UpdateAndRenderStub;
+    }
+}
+
 C_LINKAGE ENTRY_POINT(EntryPoint)
 {
     if(LaneIndex() == 0)
     {
-        //Trap();
         arena *PermanentCPUArena = ArenaAlloc(.Size = GB(3));
         arena *CPUFrameArena = ArenaAlloc();
         
@@ -27,8 +86,8 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         *Running = true;
         
         app_offscreen_buffer Buffer = {};
-        Buffer.Width = 1920/2;
-        Buffer.Height = 1080/2;
+        Buffer.Width = 960;
+        Buffer.Height = 960;
         Buffer.BytesPerPixel = 4;
         Buffer.Pitch = Buffer.BytesPerPixel*Buffer.Width;
         Buffer.Pixels = PushArray(PermanentCPUArena, u8, Buffer.Pitch*Buffer.Height);
@@ -38,9 +97,6 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         {
             ErrorLog("Could not initialize graphical context, running in headless mode.");
         }
-        
-        void *Library = 0;
-        update_and_render *UpdateAndRender = UpdateAndRenderStub;
         
         app_state AppState = {};
         AppState.PermanentArena = PermanentCPUArena;
@@ -57,9 +113,13 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         f32 GameUpdateHz = 144.0f;
         f32 TargetSecondsPerFrame = 1.0f/GameUpdateHz; 
         
+        app_code Code = {};
+        
 #if OS_LINUX        
-        char *LibraryFilePath = "./build/app.so";
-        struct timespec LastWriteTime = {};;
+        struct timespec LastWriteTime = {};
+        Code.LibraryPath = "./build/app.so";
+        void *LibraryHandle = 0;
+        LinuxLoadAppCode(&Code, &AppState, &LastWriteTime, &LibraryHandle);
 #endif
         
         while(*Running)
@@ -76,60 +136,22 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                 {
                     NewInput->Buttons[Idx].HalfTransitionCount = 0;
                 }
+                NewInput->dtForFrame = TargetSecondsPerFrame;
             }
             
             OS_ProfileAndPrint("P_InitSetup", &Profiler);
             
 #if OS_LINUX      
             // Load application code
-            {
-                struct stat LibraryFileStats = {};
-                stat(LibraryFilePath, &LibraryFileStats);
-                
-                if(LibraryFileStats.st_size && 
-                   !(LibraryFileStats.st_mtim.tv_sec == LastWriteTime.tv_sec &&
-                     LibraryFileStats.st_mtim.tv_nsec == LastWriteTime.tv_nsec))
-                {
-                    if(Library)
-                    {
-                        dlclose(Library);
-                    }
-                    
-                    Library = dlopen(LibraryFilePath, RTLD_NOW);
-                    if(!Library)
-                    {
-                        ErrorLog("%s", dlerror());
-                        UpdateAndRender = UpdateAndRenderStub;
-                    }
-                    else
-                    {
-                        LastWriteTime = LibraryFileStats.st_mtim;
-                        // Load code from library
-                        UpdateAndRender = (update_and_render *)dlsym(Library, "UpdateAndRender");
-                        if(UpdateAndRender)
-                        {
-                            Log("\nLibrary reloaded.\n");
-                            AppState.Reloaded = true;
-                        }
-                        else
-                        {
-                            ErrorLog("Could not find UpdateAndRender.");
-                            UpdateAndRender = UpdateAndRenderStub;
-                        }
-                    }
-                }
-                Assert(UpdateAndRender);
-            }
-            
+            LinuxLoadAppCode(&Code, &AppState, &LastWriteTime, &LibraryHandle);
             OS_ProfileAndPrint("P_Code", &Profiler);
-            
 #endif
             
             P_ProcessMessages(PlatformContext, NewInput, &Buffer, Running);
             
             OS_ProfileAndPrint("P_Messages", &Profiler);
             
-            UpdateAndRender(ThreadContext, &AppState, CPUFrameArena, &Buffer, NewInput);
+            Code.UpdateAndRender(ThreadContext, &AppState, CPUFrameArena, &Buffer, NewInput);
             
             OS_ProfileAndPrint("P_UpdateAndRender", &Profiler);
             

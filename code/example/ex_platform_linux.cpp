@@ -588,6 +588,14 @@ P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buf
                     }
                 } break;
                 
+                case ConfigureNotify:
+                {
+                    XConfigureEvent *Event = (XConfigureEvent *)&WindowEvent;
+                    Buffer->Width = Event->width;
+                    Buffer->Height = Event->height;
+                    //DebugBreak;
+                } break;
+                
                 case DestroyNotify:
                 {
                     XDestroyWindowEvent *Event = (XDestroyWindowEvent *)&WindowEvent;

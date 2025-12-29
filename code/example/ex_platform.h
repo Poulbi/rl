@@ -97,6 +97,8 @@ struct app_state
     
     arena *NumbersArena;
     
+    f32 Offset;
+    
 #if RL_INTERNAL
     b32 DebuggerAttached;
     b32 Reloaded;

@@ -2,8 +2,7 @@
 #include "ex_platform.h"
 
 #define GLAD_GL_IMPLEMENTATION
-#include "lib/gl_compat.h"
-#include <math.h>
+#include "lib/gl_core.h"
 
 typedef unsigned int gl_handle;
 
@@ -47,6 +46,26 @@ typedef s32 face[4][3];
 ((f32)((Hex >> 8*1) & 0xFF)/255.0f), \
 ((f32)((Hex >> 8*0) & 0xFF)/255.0f)
 
+
+//~ Math
+internal vertex 
+Rotate(vertex V, f32 Angle)
+{
+    vertex Result = {};
+    
+    f32 C = cosf(Angle);
+    f32 S = sinf(Angle);
+    
+    f32 X = V.X;
+    f32 Y = V.Y;
+    f32 Z = V.Z;
+    
+    Result.X = X*C - Z*S;
+    Result.Y = Y;
+    Result.Z = X*S + Z*C;
+    
+    return Result;
+}
 
 //~ GLAD
 void GLADNullPreCallback(const char *name, GLADapiproc apiproc, int len_args, ...) {}
@@ -99,7 +118,7 @@ BubbleSort(u32 Count, u32 *List)
 }
 
 internal void
-CompileStatusTrap(gl_handle Handle, b32 IsShader)
+GLErrorStatus(gl_handle Handle, b32 IsShader)
 {
     b32 Success = true;
     
@@ -115,7 +134,10 @@ CompileStatusTrap(gl_handle Handle, b32 IsShader)
         glGetProgramInfoLog(Handle, sizeof(InfoLog), NULL, InfoLog);
     }
     
-    Assert(Success);
+    if(!Success)
+    {
+        ErrorLog("%s", InfoLog);
+    }
 }
 
 internal gl_handle
@@ -125,7 +147,7 @@ CompileShaderFromSource(str8 Source, s32 Type)
     
     glShaderSource(Handle, 1, (char **)&Source.Data, NULL);
     glCompileShader(Handle);
-    CompileStatusTrap(Handle, true);
+    GLErrorStatus(Handle, true);
     
     return Handle;
 }
@@ -195,12 +217,6 @@ MergeSortIterative(u32 Count, u32 *In, u32 *Temp)
 {
     u32 PairSize = 2;
     
-    if((s32)(ceilf(log2f((f32)Count))) & 1)
-    {
-        MemoryCopy(Temp, In, sizeof(u32)*Count);
-        Swap(In, Temp);
-    }
-    
     b32 Toggle = false;
     b32 LastMerge = false;
     while(!LastMerge)
@@ -263,6 +279,13 @@ MergeSortIterative(u32 Count, u32 *In, u32 *Temp)
         
         Swap(Temp, In);
     }
+    
+    if(Toggle)
+    {
+        MemoryCopy(Temp, In, sizeof(u32)*Count);
+        Swap(In, Temp);
+    }
+    
 }
 
 //~ Parsing
@@ -368,12 +391,20 @@ UPDATE_AND_RENDER(UpdateAndRender)
             
             App->Initialized = true;
         }
+        
+#if !RL_INTERNAL    
+        GLADDisableCallbacks();
+#endif
     }
     OS_ProfileAndPrint("Init", &Profiler);
     
-#if !RL_INTERNAL    
-    GLADDisableCallbacks();
-#endif
+    //Input 
+    for EachIndex(Idx, Input->Text.Count)
+    {
+        app_text_button Key = Input->Text.Buffer[Idx];
+        
+        if(Key.Codepoint == 'a') App->Offset = 0.0f;
+    }
     
     s32 Count = 0;
     vertex *Vertices = 0;
@@ -382,7 +413,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
     
     // Read .obj file
     {    
-        char *FileName = "./data/suzanne.obj";
+        char *FileName = "./data/ladida.obj";
         str8 In = OS_ReadEntireFileIntoMemory(FileName);
         
         s32 InVerticesCount = 0;
@@ -417,14 +448,10 @@ UPDATE_AND_RENDER(UpdateAndRender)
                     }
                     else if(S8Match(Keyword, S8("v"), false))
                     {
-                        New(vertex, InVertex, InVertices, InVerticesCount);
-                        InVertex->X = ParseFloat(In, &At);
-                        InVertex->Y = ParseFloat(In, &At);
-#if 0
-                        InVertex->Z = ParseFloat(In, &At);
-#else
-                        InVertex->Z = 0.0f;
-#endif
+                        New(vertex, Vertex, InVertices, InVerticesCount);
+                        Vertex->X = ParseFloat(In, &At);
+                        Vertex->Y = ParseFloat(In, &At);
+                        Vertex->Z = ParseFloat(In, &At);
                     }
                     else if(S8Match(Keyword, S8("vt"), false))
                     {
@@ -518,12 +545,14 @@ UPDATE_AND_RENDER(UpdateAndRender)
     glAttachShader(ShaderProgram, VertexShader);
     glAttachShader(ShaderProgram, FragmentShader);
     glLinkProgram(ShaderProgram);
-    CompileStatusTrap(ShaderProgram, false);
+    GLErrorStatus(ShaderProgram, false);
     
     glDeleteShader(FragmentShader); 
     glDeleteShader(VertexShader);
     OS_FreeFileMemory(VertexShaderSource);
     OS_FreeFileMemory(FragmentShaderSource);
+    
+    
     
     glUseProgram(ShaderProgram);
     
@@ -534,47 +563,68 @@ UPDATE_AND_RENDER(UpdateAndRender)
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     
-    f32 FooVertices[] = {
-        // positions         // colors
-        0.5f,  -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,   // bottom right
-        -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,   // bottom left
-        0.0f,  0.5f,  0.0f,  0.0f, 0.0f, 1.0f    // top 
-    };  
-    
-    DebugBreakOnce;
-#if 1    
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(f32), 0);
-    glEnableVertexAttribArray(0);
-    
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex)*Count, &Vertices[0], GL_STATIC_DRAW);
-#else
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6*sizeof(f32), 0);
-    glEnableVertexAttribArray(0);
-    
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6*sizeof(f32), (void *)(3*sizeof(f32)));
-    glEnableVertexAttribArray(1);
-    
-    glBufferData(GL_ARRAY_BUFFER, sizeof(FooVertices), FooVertices, GL_STATIC_DRAW);
+    vertex vertices[] = 
+    {
+#if 1
+        // Cube
+        {0.5f,  -0.5f,  0.5f}, // BR
+        {-0.5f, -0.5f,  0.5f}, // BL
+        {-0.5f,  0.5f,  0.5f}, // TL
+        {0.5f,  0.5f,   0.5f}, // TR
+        
+        {0.5f,  -0.5f,  -0.5f},
+        {-0.5f, -0.5f,  -0.5f},
+        {-0.5f,  0.5f,  -0.5f}, 
+        {0.5f,  0.5f,   -0.5f},
+#elif 1
+        // Rectangle out of two triangles
+        {0.5f,  -0.5f,  0.5f},
+        {-0.5f, -0.5f,  0.5f},
+        {-0.5f,  0.5f,  0.5f}, 
+        
+        {0.5f,  -0.5f,  0.5f},
+        {-0.5f, 0.5f,  0.5f},
+        {0.5f,  0.5f,  0.5f}, 
 #endif
+    };
+    
+    GLuint faces[] =
+    {
+        0, 1, 2, 3,
+        4, 5, 6, 7,
+        1, 2, 6, 5,
+        0, 3, 7, 4,
+    };
+    
+    App->Offset += Input->dtForFrame;
+    
+    GLint PosAttrib = glGetAttribLocation(ShaderProgram, "pos");
+    glEnableVertexAttribArray(PosAttrib);
+    glVertexAttribPointer(PosAttrib, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), 0);
+    
+    f32 Angle = Pi32 * App->Offset;
+    
+    vertex Color = {cosf(Angle*2.0f), 0.5f, 0.0f};
+    
+    GLint UAngle = glGetUniformLocation(ShaderProgram, "angle");
+    GLint UColor = glGetUniformLocation(ShaderProgram, "color");
+    glUniform1f(UAngle, Angle);
+    glUniform3f(UColor, Color.X, Color.Y, Color.Z);
+    
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     
     b32 Fill = true;
-    if(Fill)
-    {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    }
-    else
-    {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    }
+    s32 Mode = (Fill) ? GL_FILL : GL_LINE;
+    glPolygonMode(GL_FRONT_AND_BACK, Mode);;
     
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glClearColor(HexToRGBV3(ColorMapBackground), 0.0f);
+    glPointSize(10.0f);
     
-#if 1
-    glDrawArrays(GL_TRIANGLES, 0, Count);
-#else
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-#endif
+    for EachIndex(Idx, 4)
+    {
+        glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, faces + 4*Idx);
+    }
     
     glDeleteBuffers(1, &VBO);
     glDeleteVertexArrays(1, &VAO);
