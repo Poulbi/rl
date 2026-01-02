@@ -633,7 +633,6 @@ UPDATE_AND_RENDER(UpdateAndRender)
             // TODO(luca): This depends on the number of vertexes per face.  Blockbench always produces 4.  But other models like suzanne, might only produce 3.  So we can modify the last parameter of `glDrawArrays` accordingly.  But it would be more robust to have each face save the number of vertices processed.
             glDrawArrays(GL_LINE_LOOP, Idx*4, 4);
         }
-        
     }
     
     // Delete

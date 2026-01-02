@@ -4,7 +4,10 @@
 #define GLAD_GL_IMPLEMENTATION
 #include "lib/gl_core.h"
 
-typedef unsigned int gl_handle;
+NO_WARNINGS_BEGIN
+#define STB_IMAGE_IMPLEMENTATION
+#include "lib/stb_image.h"
+NO_WARNINGS_END
 
 typedef struct vertex vertex;
 struct vertex
@@ -87,7 +90,7 @@ void GLADEnableCallbacks()
 
 //~ Helpers
 internal void
-GLErrorStatus(gl_handle Handle, b32 IsShader)
+GLErrorStatus(GLuint Handle, b32 IsShader)
 {
     b32 Success = true;
     
@@ -109,10 +112,10 @@ GLErrorStatus(gl_handle Handle, b32 IsShader)
     }
 }
 
-internal gl_handle
+internal GLuint
 CompileShaderFromSource(str8 Source, s32 Type)
 {
-    gl_handle Handle = glCreateShader(Type);
+    GLuint Handle = glCreateShader(Type);
     
     glShaderSource(Handle, 1, (char **)&Source.Data, NULL);
     glCompileShader(Handle);
@@ -158,12 +161,20 @@ UPDATE_AND_RENDER(UpdateAndRender)
     }
     OS_ProfileAndPrint("Init");
     
+    local_persist b32 Animate = false;
+    
     //Input 
     for EachIndex(Idx, Input->Text.Count)
     {
         app_text_button Key = Input->Text.Buffer[Idx];
         
-        if(Key.Codepoint == 'a') App->XOffset = 0.0f;
+        if(Key.Codepoint == 'r') App->XOffset = 0.0f;
+        if(Key.Codepoint == 'a') Animate = !Animate;
+    }
+    
+    if(Animate)
+    {    
+        App->XOffset += Input->dtForFrame;
     }
     
     s32 Major, Minor;
@@ -172,97 +183,174 @@ UPDATE_AND_RENDER(UpdateAndRender)
     
     glViewport(0, 0, Buffer->Width, Buffer->Height);
     
-    str8 VertexShaderSource = OS_ReadEntireFileIntoMemory("./code/example/vert.glsl");
-    str8 FragmentShaderSource = OS_ReadEntireFileIntoMemory("./code/example/frag.glsl");
-    gl_handle VertexShader = CompileShaderFromSource(VertexShaderSource, GL_VERTEX_SHADER);
-    gl_handle FragmentShader = CompileShaderFromSource(FragmentShaderSource, GL_FRAGMENT_SHADER);
-    gl_handle ShaderProgram = glCreateProgram();
-    glAttachShader(ShaderProgram, VertexShader);
-    glAttachShader(ShaderProgram, FragmentShader);
-    glLinkProgram(ShaderProgram);
-    GLErrorStatus(ShaderProgram, false);
-    
-    glDeleteShader(FragmentShader); 
-    glDeleteShader(VertexShader);
-    OS_FreeFileMemory(VertexShaderSource);
-    OS_FreeFileMemory(FragmentShaderSource);
-    
-    glUseProgram(ShaderProgram);
-    
-    gl_handle VAO, VBO;
-    glGenVertexArrays(1, &VAO); 
-    glGenBuffers(1, &VBO);  
-    
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    
-    vertex Vertices[] = 
-    {
-#if 1
-        // Cube
-        {0.5f,  -0.5f,  0.5f}, // BR
-        {-0.5f, -0.5f,  0.5f}, // BL
-        {-0.5f,  0.5f,  0.5f}, // TL
-        {0.5f,  0.5f,   0.5f}, // TR
-        
-        {0.5f,  -0.5f,  -0.5f},
-        {-0.5f, -0.5f,  -0.5f},
-        {-0.5f,  0.5f,  -0.5f}, 
-        {0.5f,  0.5f,   -0.5f},
-#elif 1
-        // Rectangle out of two triangles
-        {0.5f,  -0.5f,  0.5f},
-        {-0.5f, -0.5f,  0.5f},
-        {-0.5f,  0.5f,  0.5f}, 
-        
-        {0.5f,  -0.5f,  0.5f},
-        {-0.5f, 0.5f,  0.5f},
-        {0.5f,  0.5f,  0.5f}, 
-#endif
+    GLfloat Vertices[] = {
+        //  Position      Color             Texcoords
+        -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, // Top-left
+        0.5f,   0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // Top-right
+        0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // Bottom-right
+        -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f  // Bottom-left
     };
     
-    GLuint Faces[] =
+    GLuint Elements[] = 
     {
-        0, 1, 2, 3,
-        4, 5, 6, 7,
-        1, 2, 6, 5,
-        0, 3, 7, 4,
+        0, 1, 2,
+        2, 3, 0
     };
     
-    App->XOffset += Input->dtForFrame;
+    GLuint VAO;
+    {
+        glGenVertexArrays(1, &VAO); 
+        glBindVertexArray(VAO);
+    }
     
-    GLint PosAttrib = glGetAttribLocation(ShaderProgram, "pos");
-    glEnableVertexAttribArray(PosAttrib);
-    glVertexAttribPointer(PosAttrib, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), 0);
+    GLuint VBO;
+    {
+        glGenBuffers(1, &VBO);  
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    }
     
-    f32 Angle = Pi32 * App->XOffset;
-    vertex Color = {cosf(Angle*2.0f), 0.5f, 0.0f};
+    GLuint EBO;
+    {    
+        glGenBuffers(1, &EBO);
+        
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Elements), Elements, GL_STATIC_DRAW);
+    }
     
-    Log("Offset: %.4f\n", Angle);
+    GLuint ShaderProgram;
+    {    
+        str8 VertexShaderSource = OS_ReadEntireFileIntoMemory("./code/example/vert_gl.glsl");
+        str8 FragmentShaderSource = OS_ReadEntireFileIntoMemory("./code/example/frag_gl.glsl");
+        GLuint VertexShader = CompileShaderFromSource(VertexShaderSource, GL_VERTEX_SHADER);
+        GLuint FragmentShader = CompileShaderFromSource(FragmentShaderSource, GL_FRAGMENT_SHADER);
+        ShaderProgram = glCreateProgram();
+        glAttachShader(ShaderProgram, VertexShader);
+        glAttachShader(ShaderProgram, FragmentShader);
+        glBindFragDataLocation(ShaderProgram, 0, "FragColor");
+        glLinkProgram(ShaderProgram);
+        GLErrorStatus(ShaderProgram, false);
+        
+        glDeleteShader(FragmentShader); 
+        glDeleteShader(VertexShader);
+        OS_FreeFileMemory(VertexShaderSource);
+        OS_FreeFileMemory(FragmentShaderSource);
+        
+        glUseProgram(ShaderProgram);
+    }
     
-    GLint UAngle = glGetUniformLocation(ShaderProgram, "angle");
-    GLint UColor = glGetUniformLocation(ShaderProgram, "color");
-    glUniform2f(UAngle, Angle, 0.25f*Pi32);
-    glUniform3f(UColor, Color.X, Color.Y, Color.Z);
+    GLint PosAttrib; 
+    {
+        PosAttrib = glGetAttribLocation(ShaderProgram, "Pos");
+        glEnableVertexAttribArray(PosAttrib);
+        glVertexAttribPointer(PosAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), 0);
+    }
+    
+    GLint ColAttrib;
+    {
+        ColAttrib = glGetAttribLocation(ShaderProgram, "InColor");
+        glEnableVertexAttribArray(ColAttrib);
+        glVertexAttribPointer(ColAttrib, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
+    }
+    
+    GLint TexAttrib; 
+    {
+        TexAttrib = glGetAttribLocation(ShaderProgram, "InTexCoord");
+        glEnableVertexAttribArray(TexAttrib);
+        glVertexAttribPointer(TexAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (void*)(5 * sizeof(GLfloat)));
+    }
+    
+    OS_ProfileAndPrint("GL init");
+    
+    GLuint Tex[2];
+    {
+        glGenTextures(2, Tex);
+        
+        // Load kitty texture
+        {        
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, Tex[0]);
+            
+            // TODO(luca): Proper assets loading.
+            {
+                local_persist int Width, Height, Components;
+                local_persist u8 *Image = 0;
+                if(!Image) Image = stbi_load("./data/sample.png", &Width, &Height, &Components, 0);
+                
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Image);
+                glUniform1i(glGetUniformLocation(ShaderProgram, "TexKitten"), 0);
+            }
+            
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            // TODO(luca): Use mipmap
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+        
+        // Load puppy texture
+        {        
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, Tex[1]);
+            
+            // TODO(luca): Proper assets loading.
+            {
+                local_persist int Width, Height, Components;
+                local_persist u8 *Image = 0;
+                if(!Image) Image = stbi_load("./data/sample2.png", &Width, &Height, &Components, 0);
+                
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Image);
+                glUniform1i(glGetUniformLocation(ShaderProgram, "TexPuppy"), 1);
+            }
+            
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            // TODO(luca): Use mipmap
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+        
+        f32 Color[] = { 1.0f, 0.0f, 0.0f, 1.0f };
+        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, Color);
+    }
+    
+    OS_ProfileAndPrint("GL tex init");
     
     glBufferData(GL_ARRAY_BUFFER, sizeof(Vertices), Vertices, GL_STATIC_DRAW);
     
-    b32 Fill = true;
-    s32 Mode = (Fill) ? GL_FILL : GL_LINE;
-    glPolygonMode(GL_FRONT_AND_BACK, Mode);
-    
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glClearColor(HexToRGBV3(ColorMapBackground), 0.0f);
-    glLineWidth(2.0f);
-    
-    for EachIndex(Idx, 4)
-    {
-        glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, Faces + 4*Idx);
+    // Shader input
+    {    
+        f32 Angle = Pi32 * App->XOffset;
+        vertex Color = {cosf(Angle*2.0f), 0.5f, 0.0f};
+        
+        GLuint UAngle = glGetUniformLocation(ShaderProgram, "Angle");
+#if 0
+        glUniform2f(UAngle, Angle, 0.25f*Pi32);
+#else
+        glUniform2f(UAngle, Angle, Pi32);
+#endif
     }
     
-    glDeleteBuffers(1, &VBO);
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteProgram(ShaderProgram);
+    // Draw
+    {    
+        b32 Fill = true;
+        s32 Mode = (Fill) ? GL_FILL : GL_LINE;
+        glPolygonMode(GL_FRONT_AND_BACK, Mode);
+        
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearColor(HexToRGBV3(ColorMapBackground), 0.0f);
+        glLineWidth(2.0f);
+        
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    }
+    
+    // Cleanup
+    {    
+        glDeleteBuffers(1, &VBO);
+        glDeleteVertexArrays(1, &VAO);
+        glDeleteTextures(2, Tex);
+        glDeleteBuffers(1, &EBO);
+        glDeleteProgram(ShaderProgram);
+    }
     
     OS_ProfileAndPrint("GL");
     

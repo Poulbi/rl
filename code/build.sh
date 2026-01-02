@@ -26,7 +26,7 @@ gl=0
 Targets="hash/samples/cuversine/example [sort/app/gl]\n"
 
 # Default
-[ "$#" = 0 ] && example=1 && app=1
+[ "$#" = 0 ] && example=1 && gl=1
 
 for Arg in "$@"; do eval "$Arg=1"; done
 # Exclusive flags
