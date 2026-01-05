@@ -30,8 +30,9 @@
  * topology using a SDK 8.0 API.
  */
 
-#include "base/base_macros.h"
-PUSH_WARNINGS
+#include "base/base_core.h"
+#undef internal
+NO_WARNINGS_BEGIN
 
 
 // includes CUDA

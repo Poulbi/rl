@@ -5,12 +5,14 @@
 #include "platform.h"
 #include "platform_linux.cpp"
 
-PUSH_WARNINGS;
+NO_WARNINGS_BEGIN
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "lib/stb_image_write.h"
-#define HANDMADE_FONT_IMPLEMENTATION
-#include "lib/handmade_font.h"
-POP_WARNINGS;
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "lib/stb_truetype.h"
+#define RL_FONT_IMPLEMENTATION
+#include "lib/rl_font.h"
+NO_WARNINGS_END
 
 UPDATE_AND_RENDER(UpdateAndRenderStub)
 {
@@ -21,12 +23,12 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
 {
     if(LaneIndex() == 0)
     {
-        arena *PermanentCPUArena = ArenaAlloc(.Size = Gigabytes(3));
+        arena *PermanentCPUArena = ArenaAlloc(.Size = GB(3));
         
         b32 *Running = PushStruct(PermanentCPUArena, b32);
         *Running = true;
         
-        arena *PermanentGPUArena = CU_ArenaAlloc(PermanentCPUArena, .Size = Megabytes(100));
+        arena *PermanentGPUArena = CU_ArenaAlloc(PermanentCPUArena, .Size = MB(100));
         
         arena *CPUFrameArena = ArenaAlloc();
         
@@ -73,7 +75,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             // Prepare  Input
             { 
                 NewInput->Text.Count = 0;
-                for(EachIndex(Idx, PlatformButton_Count))
+                for EachIndex(Idx, PlatformButton_Count)
                 {
                     NewInput->Buttons[Idx].EndedDown = OldInput->Buttons[Idx].EndedDown;
                     NewInput->Buttons[Idx].HalfTransitionCount = 0;
@@ -172,7 +174,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                         Counter -= MaxCount;
                     }
                     
-                    f32 FPS = Minimum(1000.0f/LastMSPerFrame, GameUpdateHz);
+                    f32 FPS = Min(1000.0f/LastMSPerFrame, GameUpdateHz);
                     DrawTextFormat(CPUFrameArena, &Buffer, &AppState.Font, 140.0f, 30.0f+0.0f*14.0f, 0xFF13171F, 
                                    "%.2fms/f %.0fFPS", (f64)LastMSPerFrame, (f64)FPS);
                 }

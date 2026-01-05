@@ -80,6 +80,7 @@ CU_Compile()
  -Xcompiler -Wno-unused-parameter
  -Xcompiler -Wno-unused-function
  -Xcompiler -Wno-missing-field-initializers
+ -Xcompiler -Wno-sign-compare
  "
  DebugFlags="-g -lineinfo -src-in-ptx"
  ReleaseFlags="-O3"

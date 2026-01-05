@@ -32,7 +32,7 @@ internal void
 OS_ProfileAndPrint(char *Label)
 {
     GlobalProfiler.End = OS_GetWallClock();
-    Log(" %s: %.4f\n", Label, OS_MSElapsed(GlobalProfiler.Start, GlobalProfiler.End));
+    Log(" %s: %.4f\n", Label, (f64)OS_MSElapsed(GlobalProfiler.Start, GlobalProfiler.End));
     GlobalProfiler.Start = GlobalProfiler.End;
 }
 #else

@@ -25,7 +25,7 @@
 # define CU_Check(Expression) Expression
 #endif
 
-#define CU_ArenaAllocDefaultSize Megabytes(32)
+#define CU_ArenaAllocDefaultSize MB(32)
 
 //- API 
 #define CU_ArenaAlloc(Arena, ...) CU_ArenaAlloc_(Arena, (arena_alloc_params){.DefaultSize = CU_ArenaAllocDefaultSize, ##__VA_ARGS__})

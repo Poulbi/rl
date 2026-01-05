@@ -62,7 +62,7 @@ OS_ReadEntireFileIntoMemory(char *FileName)
             int Error = fstat(File, &StatBuffer);
             AssertErrno(Error != -1);
             
-            Result.Size = (umm)StatBuffer.st_size;
+            Result.Size = StatBuffer.st_size;
             
             if(Result.Size != 0)
             {                

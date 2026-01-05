@@ -7,10 +7,12 @@
 #include "cu.h"
 #include "platform.h"
 
-PUSH_WARNINGS
-#define HANDMADE_FONT_IMPLEMENTATION
-#include "lib/handmade_font.h"
-POP_WARNINGS
+NO_WARNINGS_BEGIN
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "lib/stb_truetype.h"
+#define RL_FONT_IMPLEMENTATION
+#include "lib/rl_font.h"
+NO_WARNINGS_END
 
 //~ Constants
 

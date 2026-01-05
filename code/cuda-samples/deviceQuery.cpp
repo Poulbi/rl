@@ -30,8 +30,9 @@
 
 // std::system includes
 
-#include "base/base_macros.h"
-PUSH_WARNINGS
+#include "base/base_core.h"
+#undef internal
+NO_WARNINGS_BEGIN
 
 #include <cuda_runtime.h>
 #include "helper_cuda.h"
