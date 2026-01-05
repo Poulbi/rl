@@ -5,6 +5,7 @@
 
 #include "ex_random.h"
 
+
 struct app_offscreen_buffer
 {
     s32 Width;
@@ -176,6 +177,17 @@ struct app_state
 #define UPDATE_AND_RENDER(Name) b32 Name(thread_context *Context, app_state *App, arena *FrameArena, app_offscreen_buffer *Buffer, app_input *Input)
 typedef UPDATE_AND_RENDER(update_and_render);
 
+UPDATE_AND_RENDER(UpdateAndRenderStub) { return false; }
+
+typedef struct app_code app_code;
+struct app_code
+{
+    update_and_render *UpdateAndRender;
+    
+    char *LibraryPath;
+				umm LibraryHandle;
+    b32 Loaded;
+};
 
 //~ API
 typedef umm P_context;
@@ -183,4 +195,5 @@ typedef umm P_context;
 internal P_context P_ContextInit(arena *Arena, app_offscreen_buffer *Buffer, b32 *Running);
 internal void      P_UpdateImage(P_context Context, app_offscreen_buffer *Buffer);
 internal void      P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buffer, b32 *Running);
+internal void      P_LoadAppCode(app_code *Code, app_state *AppState, s64 *LastWriteTime);
 #endif //PLATFORM_H

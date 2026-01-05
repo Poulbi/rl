@@ -3,10 +3,17 @@
 
 #if RL_FAST_COMPILE
 // NOTE(luca): If fast compile mode is on, the implementation will be compiled to a separate translation unit (see `../build/rl_libs.o` in `build.sh`).
+//
 # include "lib/gl_core_3_3_debug.h"
 # include "lib/stb_image.h"
 # include "lib/stb_truetype.h"
+C_LINKAGE void GLADDisableCallbacks();
+C_LINKAGE void GLADEnableCallbacks();
+
 #else
+
+#include "base/base_core.h"
+
 NO_WARNINGS_BEGIN
 # define GLAD_GL_IMPLEMENTATION
 # define STB_IMAGE_IMPLEMENTATION

@@ -9,71 +9,11 @@
 # include "ex_platform_windows.cpp"
 #endif
 
-UPDATE_AND_RENDER(UpdateAndRenderStub) { return false; }
-
 #if 1
 #define AppLog(Format, ...) do {if(*Running)Log(Format, ##__VA_ARGS__);} while(0)
 #else
 #define AppLog(Format, ...) NoOp
 #endif
-
-typedef struct app_code app_code;
-struct app_code
-{
-    update_and_render *UpdateAndRender;
-    
-    b32 Loaded;
-    char *LibraryPath;
-};
-
-internal void
-LinuxLoadAppCode(app_code *Code, app_state *AppState, struct timespec *LastWriteTime, void **Library)
-{
-    struct stat Stats = {};
-    stat(Code->LibraryPath, &Stats);
-    umm Size = Stats.st_size;
-    struct timespec CurrentWriteTime = Stats.st_mtim;
-    b32 WasWritten = !(CurrentWriteTime.tv_sec == LastWriteTime->tv_sec && 
-                       CurrentWriteTime.tv_nsec == LastWriteTime->tv_nsec);
-    
-    if(Size && (!Code->Loaded || WasWritten))
-    {
-        *LastWriteTime = CurrentWriteTime;
-        
-        if(*Library)
-        {
-            dlclose(*Library);
-        }
-        
-        *Library = dlopen(Code->LibraryPath, RTLD_NOW);
-        if(*Library)
-        {
-            // Load code from library
-            Code->UpdateAndRender = (update_and_render *)dlsym(*Library, "UpdateAndRender");
-            if(Code->UpdateAndRender)
-            {
-                AppState->Reloaded = true;
-                Code->Loaded = true;
-                Log("\nLibrary reloaded.\n");
-            }
-            else
-            {
-                Code->Loaded = false;
-                ErrorLog("Could not find UpdateAndRender.");
-            }
-        }
-        else
-        {
-            Code->Loaded = false;
-            ErrorLog("%s", dlerror());
-        }
-    }
-    
-    if(!Code->Loaded)
-    {
-        Code->UpdateAndRender = UpdateAndRenderStub;
-    }
-}
 
 C_LINKAGE ENTRY_POINT(EntryPoint)
 {
@@ -115,12 +55,16 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         
         app_code Code = {};
         
-#if OS_LINUX        
-        struct timespec LastWriteTime = {};
+        s64 LastWriteTime = {};
         Code.LibraryPath = "./build/app.so";
-        void *LibraryHandle = 0;
-        LinuxLoadAppCode(&Code, &AppState, &LastWriteTime, &LibraryHandle);
+#if OS_LINUX        
+        void *LinuxLibraryHandle = 0;
+								Code.LibraryHandle = (umm)LinuxLibraryHandle;
+#else
+								HMODULE Win32LibraryHandle = 0;
+								Code.LibraryHandle = (umm)Win32LibraryHandle;
 #endif
+        P_LoadAppCode(&Code, &AppState, &LastWriteTime);
         
         b32 Paused = false;
         
@@ -143,11 +87,9 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             
             OS_ProfileAndPrint("P_InitSetup");
             
-#if OS_LINUX      
             // Load application code
-            LinuxLoadAppCode(&Code, &AppState, &LastWriteTime, &LibraryHandle);
+            P_LoadAppCode(&Code, &AppState, &LastWriteTime);
             OS_ProfileAndPrint("P_Code");
-#endif
             
             P_ProcessMessages(PlatformContext, NewInput, &Buffer, Running);
             

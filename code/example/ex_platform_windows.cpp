@@ -19,3 +19,40 @@ P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buf
 {
    NotImplemented; 
 }
+
+internal void
+P_LoadAppCode(app_code *Code, app_state *AppState, s64 *LastWriteTime)
+{
+	HMODULE Library = (HMODULE)Code->LibraryHandle;
+
+	char *TempDLLPath = "app_temp.dll";
+	CopyFile(Code->LibraryPath, TempDLLPath, FALSE);
+
+	Library = LoadLibraryA(TempDLLPath);
+	if(Library)
+	{
+		Code->UpdateAndRender = (app_update_and_render *)GetProcAddress(Code.TempDLLPath, "UpdateAndRender");
+		if(Code->UpdateAndRender)
+		{
+			Code->Loaded = true;
+			AppState->Reloaded = true;
+			Code->LibraryHandle = (umm)Library;
+			Log("\nLibrary reloaded.\n");
+		}
+		else
+		{
+			Code->Loaded = false;
+			ErrorLog("Could not find UpdateAndRender.\n");
+		}
+	}
+	else
+	{
+		Code->Loaded = false;
+		ErrorLog("Could not open library.\n");
+	}
+
+	if(!Code->Loaded)
+	{
+		Code->UpdateAndRender = UpdateAndRenderStub;
+	}
+}

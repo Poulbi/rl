@@ -55,8 +55,4 @@ internal void OS_ProfileAndPrint(char *Label);
 # define RL_PROFILE 0
 #endif
 
-#if !RL_PROFILE
-# define OS_ProfileAndPrint(Label) NoOp
-#endif
-
 #endif //OS_H

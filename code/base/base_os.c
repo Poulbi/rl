@@ -27,6 +27,7 @@ OS_ProfileInit()
     GlobalProfiler.End = GlobalProfiler.Start;
 }
 
+#if RL_PROFILE
 internal void
 OS_ProfileAndPrint(char *Label)
 {
@@ -34,3 +35,7 @@ OS_ProfileAndPrint(char *Label)
     Log(" %s: %.4f\n", Label, OS_MSElapsed(GlobalProfiler.Start, GlobalProfiler.End));
     GlobalProfiler.Start = GlobalProfiler.End;
 }
+#else
+// NOTE(luca): stub
+internal void OS_ProfileAndPrint(char *Label) {}
+#endif

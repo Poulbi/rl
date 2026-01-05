@@ -760,3 +760,54 @@ P_UpdateImage(P_context Context, app_offscreen_buffer *Buffer)
         
 	}
 }
+
+internal void
+P_LoadAppCode(app_code *Code, app_state *AppState, s64 *LastWriteTime)
+{
+	void *Library = (void *)(Code->LibraryHandle);
+    struct stat Stats = {};
+    stat(Code->LibraryPath, &Stats);
+    umm Size = Stats.st_size;
+    s64 CurrentWriteTime = LinuxTimeSpecToSeconds(Stats.st_mtim);
+    b32 WasWritten = (CurrentWriteTime != *LastWriteTime);
+    
+    if(Size && (!Code->Loaded || WasWritten))
+    {
+        *LastWriteTime = CurrentWriteTime;
+        
+        if(Library)
+        {
+            dlclose(Library);
+        }
+        
+        Library = dlopen(Code->LibraryPath, RTLD_NOW);
+        if(Library)
+        {
+            // Load code from library
+            Code->UpdateAndRender = (update_and_render *)dlsym(Library, "UpdateAndRender");
+            if(Code->UpdateAndRender)
+            {
+                Code->Loaded = true;
+																AppState->Reloaded = true;
+																Code->LibraryHandle = (umm)Library;
+																Log("\nLibrary reloaded.\n");
+            }
+            else
+            {
+                Code->Loaded = false;
+                ErrorLog("Could not find UpdateAndRender.");
+            }
+        }
+        else
+        {
+            Code->Loaded = false;
+            ErrorLog("%s", dlerror());
+        }
+    }
+    
+				if(!Code->Loaded)
+    {
+        Code->UpdateAndRender = UpdateAndRenderStub;
+    }
+}
+

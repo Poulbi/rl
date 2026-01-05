@@ -18,6 +18,8 @@
 #include <signal.h>
 #include <execinfo.h>
 #include <dlfcn.h>
+#include <link.h>
+
 #include "base_arenas.h"
 
 #define ERRNO_FMT "Errno(%d): %s"
@@ -33,6 +35,14 @@ struct os_thread
     
     entry_point_params Params;
 };
+
+//~ Helpers
+internal s64
+LinuxTimeSpecToSeconds(struct timespec Counter)
+{
+    s64 Result = (s64)Counter.tv_sec*1000000000 + (s64)Counter.tv_nsec;
+				return Result;
+}
 
 //~ Syscalls
 #define AssertErrno(Expression) do { if(!(Expression)) { TrapMsg(ERRNO_FMT, ERRNO_ARG); }; } while(0)
@@ -147,7 +157,7 @@ OS_GetWallClock(void)
     
     struct timespec Counter;
     clock_gettime(CLOCK_MONOTONIC, &Counter);
-    Result = (s64)Counter.tv_sec*1000000000 + (s64)Counter.tv_nsec;
+    Result = LinuxTimeSpecToSeconds(Counter);
     
     return Result;
 }

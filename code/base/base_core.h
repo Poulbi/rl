@@ -53,6 +53,7 @@
 
 #if OS_WINDOWS
 # include <windows.h>
+# include <stdio.h>
 # define RADDBG_MARKUP_IMPLEMENTATION
 # define ssize_t SSIZE_T
 #elif OS_LINUX
