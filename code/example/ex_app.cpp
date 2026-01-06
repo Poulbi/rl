@@ -420,7 +420,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
     App->YOffset -= 2.0f*!!(App->YOffset > 2.0f);
     App->YOffset += 2.0f*!!(App->YOffset < -2.0f);
     
-    s32 Count = 0;
+    umm Count = 0;
     vertex *Vertices = 0;
     tex_coord *TexCoords = 0; 
     normal *Normals = 0;

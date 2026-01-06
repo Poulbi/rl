@@ -1,6 +1,10 @@
 // raddbg 0.9.24 project file
 
 recent_file: path: "code/base/base_os_windows.c"
+recent_file: path: "code/example/ex_app.cpp"
+recent_file: path: "code/example/ex_platform.cpp"
+recent_file: path: "code/example/ex_platform_windows.cpp"
+recent_file: path: "code/lib/gl_core_3_3_debug.h"
 recent_file: path: "code/example/platform.cpp"
 recent_file: path: "code/base/base_arenas.c"
 recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcstartup/src/utility/utility_desktop.cpp"
@@ -12,7 +16,27 @@ debug_info:
 }
 target:
 {
-  executable: "build/platform.exe"
-  working_directory: build
+  executable: "build/ex_platform.exe"
+  working_directory: ""
   enabled: 1
+}
+debug_info:
+{
+  path: "C:/Users/zebra/Projects/rl/build/ex_platform.pdb"
+  timestamp: 66203077257402
+}
+debug_info:
+{
+  path: "C:/Users/zebra/Projects/rl/build/ex_app.pdb"
+  timestamp: 66203077256692
+}
+breakpoint:
+{
+  source_location: "code/example/ex_platform.cpp:102:1"
+  hit_count: 1
+}
+watch_pin:
+{
+  expression: "Code.UpdateAndRender"
+  source_location: "code/example/ex_platform.cpp:104:1"
 }

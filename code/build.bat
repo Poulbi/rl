@@ -10,4 +10,9 @@ pushd ..\build
 
 set CommonLinkerFlags=-opt:ref -incremental:no user32.lib Gdi32.lib winmm.lib
 
-cl -MTd -Gm- -nologo -GR- -EHa- -Oi -FC -Z7 -WX -W4 -wd4459 -wd4456 -wd4201 -wd4100 -wd4101 -wd4189 -wd4505 -wd4996 -wd4389 -wd4244 -DRL_INTERNAL=1 -I..\code /std:c++20 ..\code\example\ex_platform.cpp /link %CommonLinkerFlags%
+set CommonCompilerFlags=-MTd -Gm- -nologo -GR- -EHa- -Oi -FC -Z7 -WX -W4 -wd4459 -wd4456 -wd4201 -wd4100 -wd4101 -wd4189 -wd4505 -wd4996 -wd4389 -wd4244 -DRL_INTERNAL=1 -I..\code /std:c++20 /Zc:strictStrings-
+
+REM 64-Bit
+cl %CommonCompilerFlags% -DBASE_NO_ENTRYPOINT=1 -Fmapp.map ..\code\example\ex_app.cpp -LD /link /DLL %CommonLinkerFlags% /EXPORT:UpdateAndRender
+
+cl %CommonCompilerFlags% -Fmex_platform.map ..\code\example\ex_platform.cpp /link %CommonLinkerFlags%

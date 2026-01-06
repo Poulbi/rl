@@ -10,6 +10,26 @@ SafeTruncateU64(u64 Value)
     return(Result);
 }
 
+#define Win32LogIfError() Win32LogIfError_(__FILE__, __LINE__)
+internal void 
+Win32LogIfError_(char *File, s32 Line)
+{
+    LPVOID ErrorMessage = 0;
+    DWORD ErrorCode = GetLastError();
+    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+                  FORMAT_MESSAGE_FROM_SYSTEM | 
+                  FORMAT_MESSAGE_IGNORE_INSERTS, 
+                  0, ErrorCode, 
+                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), 
+                  (LPTSTR)&ErrorMessage, 0, 0);
+    if(ErrorCode)
+    { 
+        Log(ERROR_FMT "%s\n", File, Line, ErrorMessage);
+        LocalFree(ErrorMessage);
+    }
+}
+
+
 //- API 
 internal str8 
 OS_ReadEntireFileIntoMemory(char *FileName)
@@ -47,13 +67,20 @@ OS_ReadEntireFileIntoMemory(char *FileName)
             }
             else
             {
+                Win32LogIfError();
                 ErrorLog("Could not allocate memory for reading '%s'.\n", FileName);
             }
         }
         else
         {
+            Win32LogIfError();
             ErrorLog("Could not open '%s' for reading.\n");
         }
+    }
+    else
+    {
+        Win32LogIfError();
+        ErrorLog("Could not open '%s' for reading.\n");
     }
     
     return Result;
@@ -88,6 +115,15 @@ OS_WriteEntireFile(char *FileName, str8 File)
     return Result;
 }
 
+internal void
+OS_FreeFileMemory(str8 File)
+{
+    if(File.Data)
+    {
+        VirtualFree(File.Data, File.Size, MEM_RELEASE);
+    }
+}
+
 internal void 
 OS_PrintFormat(char *Format, ...)
 {
@@ -105,13 +141,13 @@ OS_PrintFormat(char *Format, ...)
 internal void
 OS_BarrierWait(barrier Barrier)
 {
-   NotImplemented;
+    NotImplemented;
 }
 
 internal void 
 OS_SetThreadName(str8 ThreadName)
 {
-   NotImplemented;
+    NotImplemented;
 }
 
 internal void *
@@ -139,10 +175,11 @@ OS_GetWallClock(void)
 internal void
 OS_Sleep(u32 Seconds)
 {
-   NotImplemented; 
+    NotImplemented; 
 }
 
 //~ Entrypoint
+#if !BASE_NO_ENTRYPOINT
 int CALLBACK
 WinMain(HINSTANCE Instance,
         HINSTANCE PrevInstance,
@@ -173,3 +210,4 @@ WinMain(HINSTANCE Instance,
     EntryPoint(&Params);
     return 0;
 }
+#endif

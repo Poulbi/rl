@@ -41,7 +41,7 @@ internal s64
 LinuxTimeSpecToSeconds(struct timespec Counter)
 {
     s64 Result = (s64)Counter.tv_sec*1000000000 + (s64)Counter.tv_nsec;
-				return Result;
+    return Result;
 }
 
 //~ Syscalls
@@ -315,6 +315,7 @@ LinuxMainEntryPoint(int ArgsCount, char **Args)
         Ret = pthread_join(Threads[Index].Params.Context.Handle, &Threads[Index].Result);
         Assert(Ret == 0);
     }
+    
 }
 
 int main(int ArgsCount, char **Args)

@@ -20,7 +20,7 @@ struct arena_alloc_params
 
 #define ArenaAllocDefaultSize MB(64)
 
-#define ArenaAlloc(...) ArenaAlloc_((arena_alloc_params){.DefaultSize = ArenaAllocDefaultSize, ##__VA_ARGS__})
+#define ArenaAlloc(...) ArenaAlloc_(arena_alloc_params{.DefaultSize = ArenaAllocDefaultSize, ##__VA_ARGS__})
 internal arena *ArenaAlloc_(arena_alloc_params Params);
 internal void  *ArenaPush(arena *Arena, umm Size);
 internal umm BeginScratch(arena *Arena);
