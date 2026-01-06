@@ -26,7 +26,7 @@ paths =
     { .path = "code",         .recursive = false, .relative = true, },
     { .path = "code/base",    .recursive = true,  .relative = true, },
     { .path = "code/lib",     .recursive = true,  .relative = true, },
-    { .path = "code/example/gl", .recursive = false, .relative = true, },
+    { .path = "code/example/", .recursive = false, .relative = true, },
 };
 
 load_paths =
@@ -44,10 +44,16 @@ commands =
         .linux = "sh ./code/build.sh",
         .win = ".\\code\\build.bat",
     },
+    .build_app = 
+    {
+        .out = "*compilation*", .save_dirty_files = true,
+        .linux = "sh ./code/build.sh example app",
+        .win = ".\\code\\build.bat",
+    },
 };
 
 fkey_command =
 {
     .F1 = "build_default",
-    .F2 = "build_default_release",
+    .F2 = "build_app",
 };

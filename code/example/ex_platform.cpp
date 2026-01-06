@@ -19,10 +19,10 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
 {
     if(LaneIndex() == 0)
     {
-        arena *PermanentCPUArena = ArenaAlloc(.Size = GB(3));
-        arena *CPUFrameArena = ArenaAlloc(.Size = GB(1));
+        arena *PermanentArena = ArenaAlloc(.Size = GB(3));
+        arena *FrameArena = ArenaAlloc(.Size = GB(1));
         
-        b32 *Running = PushStruct(PermanentCPUArena, b32);
+        b32 *Running = PushStruct(PermanentArena, b32);
         *Running = true;
         
         app_offscreen_buffer Buffer = {};
@@ -30,16 +30,49 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         Buffer.Height = 960;
         Buffer.BytesPerPixel = 4;
         Buffer.Pitch = Buffer.BytesPerPixel*Buffer.Width;
-        Buffer.Pixels = PushArray(PermanentCPUArena, u8, Buffer.Pitch*Buffer.Height);
+        Buffer.Pixels = PushArray(PermanentArena, u8, Buffer.Pitch*Buffer.Height);
         
-        P_context PlatformContext = P_ContextInit(PermanentCPUArena, &Buffer, Running);
+        P_context PlatformContext = P_ContextInit(PermanentArena, &Buffer, Running);
         if(!PlatformContext)
         {
             ErrorLog("Could not initialize graphical context, running in headless mode.");
         }
         
+        str8 ExeDirPath = {};
+        {        
+            u32 OnePastLastSlash = 0;
+#if OS_LINUX
+            char *FileName = Params->Args[0];
+            u32 SizeOfFileName = (u32)StringLength(FileName);
+            for EachIndex(Idx, SizeOfFileName)
+            {
+                if(FileName[Idx] == '/')
+                {
+                    OnePastLastSlash = (u32)Idx + 1;
+                }
+            }
+            
+#elif OS_WINDOWS
+												char *FileName = PushArray(PermanentArena, char, 256);
+            u32 SizeOfFileName = GetModuleFileNameA(0, FileName, sizeof(FileName));
+            for EachIndex(Idx, SizeOfFileName)
+            {
+                if(FileName[Idx] == '\\')
+                {
+                    OnePastLastSlash = (u32)Idx + 1;
+                }
+            }
+#else
+# error "OS not supported" 
+#endif
+            ExeDirPath.Data = (u8 *)FileName;
+												ExeDirPath.Size = OnePastLastSlash;
+        }
+        
         app_state AppState = {};
-        AppState.PermanentArena = PermanentCPUArena;
+        AppState.ExeDirPath = ExeDirPath;
+        AppState.PermanentArena = PermanentArena;
+        
 #if RL_INTERNAL
         AppState.DebuggerAttached = GlobalDebuggerIsAttached;
 #endif
@@ -56,15 +89,15 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         app_code Code = {};
         
         s64 LastWriteTime = {};
-        Code.LibraryPath = "./build/app.so";
 #if OS_LINUX        
+        Code.LibraryPath = PathFromExe(PermanentArena, &AppState, S8("./app.so"));
         void *LinuxLibraryHandle = 0;
-								Code.LibraryHandle = (umm)LinuxLibraryHandle;
+        Code.LibraryHandle = (umm)LinuxLibraryHandle;
 #else
-								HMODULE Win32LibraryHandle = 0;
-								Code.LibraryHandle = (umm)Win32LibraryHandle;
+        Code.LibraryPath = PathFromExe(PermanentArena, &AppState, S8("./app.dll"));
+        HMODULE Win32LibraryHandle = 0;
+        Code.LibraryHandle = (umm)Win32LibraryHandle;
 #endif
-        P_LoadAppCode(&Code, &AppState, &LastWriteTime);
         
         b32 Paused = false;
         
@@ -72,7 +105,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         {
             OS_ProfileInit();
             
-            umm CPUBackPos = BeginScratch(CPUFrameArena);
+            umm CPUBackPos = BeginScratch(FrameArena);
             
             // Prepare  Input
             { 
@@ -88,7 +121,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             OS_ProfileAndPrint("P_InitSetup");
             
             // Load application code
-            P_LoadAppCode(&Code, &AppState, &LastWriteTime);
+            P_LoadAppCode(FrameArena, &Code, &AppState, &LastWriteTime);
             OS_ProfileAndPrint("P_Code");
             
             P_ProcessMessages(PlatformContext, NewInput, &Buffer, Running);
@@ -99,7 +132,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             
             if(!Paused)
             {
-                *Running = *Running &&  !Code.UpdateAndRender(ThreadContext, &AppState, CPUFrameArena, &Buffer, NewInput);
+                *Running = *Running &&  !Code.UpdateAndRender(ThreadContext, &AppState, FrameArena, &Buffer, NewInput);
             }
             
             OS_ProfileAndPrint("P_UpdateAndRender");
@@ -173,7 +206,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             
             FlipWallClock = OS_GetWallClock();
             
-            EndScratch(CPUFrameArena, CPUBackPos);
+            EndScratch(FrameArena, CPUBackPos);
         }
     }
     

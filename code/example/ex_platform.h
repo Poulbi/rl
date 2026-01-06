@@ -116,6 +116,26 @@ struct app_input
     f32 dtForFrame;
 };
 
+//~ App logic
+typedef struct app_state app_state;
+struct app_state
+{
+    arena *PermanentArena;
+    random_series Series;
+    
+    arena *NumbersArena;
+    
+    f32 XOffset;
+    f32 YOffset;
+    
+    str8 ExeDirPath;
+#if RL_INTERNAL
+    b32 DebuggerAttached;
+#endif
+    b32 Reloaded;
+    b32 Initialized;
+};
+
 //- Helper functions 
 internal inline b32 
 WasPressed(app_button_state State)
@@ -153,25 +173,32 @@ CharPressed(app_input *Input, rune Codepoint, s32 Modifiers)
     return Pressed;
 }
 
-//~ App logic
-typedef struct app_state app_state;
-struct app_state
+internal char *
+PathFromExe(arena *Arena, app_state *App, str8 Path)
 {
-    arena *PermanentArena;
-    random_series Series;
+    char *Result = 0;
     
-    arena *NumbersArena;
+    str8 Base = App->ExeDirPath;
+    umm Size = Base.Size + Path.Size + 1;
     
-    f32 XOffset;
-    f32 YOffset;
+    Result = PushArray(Arena, char, Size);
     
-#if RL_INTERNAL
-    b32 DebuggerAttached;
-#endif
-    b32 Reloaded;
+    umm At = 0;
+    for EachIndex(Idx, Base.Size)
+    {
+        Result[At] = Base.Data[Idx];
+        At += 1;
+    }
+    for EachIndex(Idx, Path.Size)
+    {
+        Result[At] = Path.Data[Idx];
+        At += 1;
+    }
     
-    b32 Initialized;
-};
+    Result[Size - 1] = 0;
+    
+    return Result;
+}
 
 //~ Functions
 #define UPDATE_AND_RENDER(Name) b32 Name(thread_context *Context, app_state *App, arena *FrameArena, app_offscreen_buffer *Buffer, app_input *Input)
@@ -185,7 +212,7 @@ struct app_code
     update_and_render *UpdateAndRender;
     
     char *LibraryPath;
-				umm LibraryHandle;
+    umm LibraryHandle;
     b32 Loaded;
 };
 
@@ -195,5 +222,5 @@ typedef umm P_context;
 internal P_context P_ContextInit(arena *Arena, app_offscreen_buffer *Buffer, b32 *Running);
 internal void      P_UpdateImage(P_context Context, app_offscreen_buffer *Buffer);
 internal void      P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buffer, b32 *Running);
-internal void      P_LoadAppCode(app_code *Code, app_state *AppState, s64 *LastWriteTime);
+internal void      P_LoadAppCode(arena *Arena, app_code *Code, app_state *App, s64 *LastWriteTime);
 #endif //PLATFORM_H

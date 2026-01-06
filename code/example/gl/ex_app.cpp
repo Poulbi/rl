@@ -262,7 +262,9 @@ UPDATE_AND_RENDER(UpdateAndRender)
             {
                 local_persist int Width, Height, Components;
                 local_persist u8 *Image = 0;
-                if(!Image) Image = stbi_load("./data/sample.png", &Width, &Height, &Components, 0);
+                
+                char *ImagePath = PathFromExe(FrameArena, S8("./data/sample.png"));
+                if(!Image) Image = stbi_load(ImagePath, &Width, &Height, &Components, 0);
                 
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Image);
                 glUniform1i(glGetUniformLocation(ShaderProgram, "TexKitten"), 0);

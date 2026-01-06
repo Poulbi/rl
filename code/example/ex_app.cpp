@@ -427,7 +427,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
     
     // Read obj file
     {    
-        char *FileName = "./data/mo21312del.obj";
+        char *FileName = PathFromExe(FrameArena, App, S8("../data/bonhomme.obj"));
         str8 In = OS_ReadEntireFileIntoMemory(FileName);
         
         s32 InVerticesCount = 0;

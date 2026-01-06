@@ -762,7 +762,7 @@ P_UpdateImage(P_context Context, app_offscreen_buffer *Buffer)
 }
 
 internal void
-P_LoadAppCode(app_code *Code, app_state *AppState, s64 *LastWriteTime)
+P_LoadAppCode(arena *Arena, app_code *Code, app_state *AppState, s64 *LastWriteTime)
 {
 	void *Library = (void *)(Code->LibraryHandle);
     struct stat Stats = {};
@@ -788,9 +788,9 @@ P_LoadAppCode(app_code *Code, app_state *AppState, s64 *LastWriteTime)
             if(Code->UpdateAndRender)
             {
                 Code->Loaded = true;
-																AppState->Reloaded = true;
-																Code->LibraryHandle = (umm)Library;
-																Log("\nLibrary reloaded.\n");
+                AppState->Reloaded = true;
+                Code->LibraryHandle = (umm)Library;
+                Log("\nLibrary reloaded.\n");
             }
             else
             {
@@ -805,7 +805,7 @@ P_LoadAppCode(app_code *Code, app_state *AppState, s64 *LastWriteTime)
         }
     }
     
-				if(!Code->Loaded)
+    if(!Code->Loaded)
     {
         Code->UpdateAndRender = UpdateAndRenderStub;
     }

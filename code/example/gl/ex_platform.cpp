@@ -117,7 +117,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         
 #if OS_LINUX        
         struct timespec LastWriteTime = {};
-        Code.LibraryPath = "./build/app.so";
+        Code.LibraryPath = PathFromExe(PermanentCPUArena, S8("./build/app.so"));
         void *LibraryHandle = 0;
         LinuxLoadAppCode(&Code, &AppState, &LastWriteTime, &LibraryHandle);
 #endif

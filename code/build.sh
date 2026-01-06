@@ -26,7 +26,8 @@ example=0
 app=0
 sort=0
 gl=0
-Targets="hash/samples/cuversine/example [sort/app/gl]\n"
+windows=1
+Targets="hash/samples/cuversine/example [sort/app/gl/windows]\n"
 
 # Default
 [ "$#" = 0 ] && example=1 && gl=1
@@ -155,7 +156,12 @@ Strip()
  printf '%s %s' "$Source" "$Out" 
 }
 
-#- Compilation
+#- Targets
+if [ "$clean"  = 1 ]
+then
+ rm -rf ../build/*
+ DidWork=1
+fi
 
 [ "$hash" = 1 ] && C_Compile $(Strip ./hash/hash.c)
 if [ "$samples" = 1 ]
@@ -193,12 +199,22 @@ then
  [ "$app"  = 1 ] && AppCompile ./example
  [ "$sort" = 1 ] && AppCompile ./example/sort
  [ "$gl"   = 1 ] && AppCompile ./example/gl
-fi
-
-if [ "$clean"  = 1 ]
-then
- rm -rf ../build/*
- DidWork=1
+	if [ "$windows" = 1 ]
+	then
+		CompilerFlags="
+		-I.
+		-g -gcodeview
+		--target=x86_64-w64-mingw32
+		-fms-extensions
+		-fuse-ld=lld
+		-DRADDBG_MARKUP_STUBS=1
+		-Wno-writable-strings
+		"
+		LinkerFlags="-Wl,/DEBUG"
+	 clang $CompilerFlags example/ex_platform.cpp "$LinkerFlags" -o ../build/ex_platform.exe
+		clang $CompilerFlags -shared -fPIC example/ex_platform.cpp "$LinkerFlags" -o ../build/app.dll
+		DidWork=1
+	fi
 fi
 
 #- End

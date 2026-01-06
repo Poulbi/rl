@@ -152,6 +152,34 @@ CharPressed(app_input *Input, rune Codepoint, s32 Modifiers)
     return Pressed;
 }
 
+
+internal char *
+PathFromExe(arena *Arena, str8 Path)
+{
+    char *Result = 0;
+    
+    str8 ExePath = S8("/home/aluc/proj/rl/build/");
+    umm Size = ExePath.Size + Path.Size + 1;
+    
+    Result = PushArray(Arena, char, Size);
+    
+    umm At = 0;
+    for EachIndex(Idx, ExePath.Size)
+    {
+        Result[At] = ExePath.Data[Idx];
+        At += 1;
+    }
+    for EachIndex(Idx, Path.Size)
+    {
+        Result[At] = Path.Data[Idx];
+        At += 1;
+    }
+    
+    Result[Size - 1] = 0;
+    
+    return Result;
+}
+
 //~ App logic
 typedef struct app_state app_state;
 struct app_state

@@ -21,12 +21,12 @@ P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buf
 }
 
 internal void
-P_LoadAppCode(app_code *Code, app_state *AppState, s64 *LastWriteTime)
+P_LoadAppCode(arena *Arena, app_code *Code, app_state *App, s64 *LastWriteTime)
 {
 	HMODULE Library = (HMODULE)Code->LibraryHandle;
     
-	char *TempDLLPath = "./build/ex_app_temp.dll";
-	CopyFile("./build/ex_app.dll", TempDLLPath, FALSE);
+	char *TempDLLPath = PathFromExe(Arena, App, S8("./ex_app_temp.dll"));
+	CopyFile(Code->LibraryPath, TempDLLPath, FALSE);
     Win32LogIfError();
     
     Library = LoadLibraryA(TempDLLPath);
@@ -36,7 +36,7 @@ P_LoadAppCode(app_code *Code, app_state *AppState, s64 *LastWriteTime)
 		if(Code->UpdateAndRender)
 		{
 			Code->Loaded = true;
-			AppState->Reloaded = true;
+			App->Reloaded = true;
 			Code->LibraryHandle = (umm)Library;
 			Log("\nLibrary reloaded.\n");
 		}
