@@ -26,7 +26,7 @@ example=0
 app=0
 sort=0
 gl=0
-windows=1
+windows=0
 Targets="hash/samples/cuversine/example [sort/app/gl/windows]\n"
 
 # Default
