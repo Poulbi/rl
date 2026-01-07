@@ -1,9 +1,11 @@
 // raddbg 0.9.24 project file
 
+recent_file: path: "code/example/ex_platform_windows.cpp"
 recent_file: path: "code/base/base_os_windows.c"
 recent_file: path: "code/example/ex_app.cpp"
+recent_file: path: "d:/os/obj/amd64fre/minkernel/crts/ucrt/src/appcrt/string/xmt/objfre/amd64/minkernel/crts/ucrt/src/appcrt/string/strnlen.cpp"
 recent_file: path: "code/example/ex_platform.cpp"
-recent_file: path: "code/example/ex_platform_windows.cpp"
+recent_file: path: "d:/os/obj/amd64fre/minkernel/crts/ucrt/src/appcrt/stdio/xmt/objfre/amd64/minkernel/crts/ucrt/inc/corecrt_internal_stdio_output.h"
 recent_file: path: "code/lib/gl_core_3_3_debug.h"
 recent_file: path: "code/example/platform.cpp"
 recent_file: path: "code/base/base_arenas.c"
@@ -23,17 +25,12 @@ target:
 debug_info:
 {
   path: "C:/Users/zebra/Projects/rl/build/ex_platform.pdb"
-  timestamp: 66203077257402
+  timestamp: 66203171373591
 }
 debug_info:
 {
   path: "C:/Users/zebra/Projects/rl/build/ex_app.pdb"
-  timestamp: 66203077256692
-}
-breakpoint:
-{
-  source_location: "code/example/ex_platform.cpp:102:1"
-  hit_count: 1
+  timestamp: 66203171372668
 }
 watch_pin:
 {

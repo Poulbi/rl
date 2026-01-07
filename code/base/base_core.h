@@ -95,6 +95,14 @@ Swap(type& A, type& B) { type T = A; A = B; B = T; }
 #define NoOp ((void)0)
 
 #if OS_LINUX
+# define OS_SlashChar '/'
+# define SLASH "/"
+#elif OS_WINDOWS
+# define OS_SlashChar '\\'
+# define SLASH "\\"
+#endif
+
+#if OS_LINUX
 # define Trap() __builtin_trap();
 #elif OS_WINDOWS
 # define Trap() __debugbreak();

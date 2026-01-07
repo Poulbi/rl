@@ -3,6 +3,10 @@
 
 #include "lib/rl_libs.h"
 
+#define Strs_CodePath       ".."SLASH"code"SLASH"example" 
+#define Strs_FragmentShaderPath Strs_CodePath SLASH "frag.glsl"
+#define Strs_VertexShaderPath   Strs_CodePath SLASH "vert.glsl"
+
 typedef unsigned int gl_handle;
 
 typedef struct vertex vertex;
@@ -123,13 +127,21 @@ GLErrorStatus(gl_handle Handle, b32 IsShader)
 }
 
 internal gl_handle
-CompileShaderFromSource(str8 Source, s32 Type)
+CompileShaderFromSource(arena *Arena, app_state *App, str8 FileNameAfterExe, s32 Type)
 {
     gl_handle Handle = glCreateShader(Type);
     
-    glShaderSource(Handle, 1, (char **)&Source.Data, NULL);
-    glCompileShader(Handle);
-    GLErrorStatus(Handle, true);
+    char *FileName = PathFromExe(Arena, App, FileNameAfterExe);
+    str8 Source = OS_ReadEntireFileIntoMemory(FileName);
+    
+    if(Source.Size)
+    {    
+        glShaderSource(Handle, 1, (char **)&Source.Data, NULL);
+        glCompileShader(Handle);
+        GLErrorStatus(Handle, true);
+    }
+    
+    OS_FreeFileMemory(Source);
     
     return Handle;
 }
@@ -427,7 +439,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
     
     // Read obj file
     {    
-        char *FileName = PathFromExe(FrameArena, App, S8("../data/bonhomme.obj"));
+        char *FileName = PathFromExe(FrameArena, App, S8(".."SLASH"data"SLASH"bonhomme.obj"));
         str8 In = OS_ReadEntireFileIntoMemory(FileName);
         
         s32 InVerticesCount = 0;
@@ -556,10 +568,10 @@ UPDATE_AND_RENDER(UpdateAndRender)
         
         glViewport(0, 0, Buffer->Width, Buffer->Height);
         
-        str8 VertexShaderSource = OS_ReadEntireFileIntoMemory("./code/example/vert.glsl");
-        str8 FragmentShaderSource = OS_ReadEntireFileIntoMemory("./code/example/frag.glsl");
-        gl_handle VertexShader = CompileShaderFromSource(VertexShaderSource, GL_VERTEX_SHADER);
-        gl_handle FragmentShader = CompileShaderFromSource(FragmentShaderSource, GL_FRAGMENT_SHADER);
+        gl_handle VertexShader, FragmentShader;
+        VertexShader = CompileShaderFromSource(FrameArena, App, S8(Strs_VertexShaderPath), GL_VERTEX_SHADER);
+        FragmentShader = CompileShaderFromSource(FrameArena, App, S8(Strs_FragmentShaderPath), GL_FRAGMENT_SHADER);
+        
         ShaderProgram = glCreateProgram();
         glAttachShader(ShaderProgram, VertexShader);
         glAttachShader(ShaderProgram, FragmentShader);
@@ -568,8 +580,6 @@ UPDATE_AND_RENDER(UpdateAndRender)
         
         glDeleteShader(FragmentShader); 
         glDeleteShader(VertexShader);
-        OS_FreeFileMemory(VertexShaderSource);
-        OS_FreeFileMemory(FragmentShaderSource);
         
         glUseProgram(ShaderProgram);
         
@@ -591,11 +601,11 @@ UPDATE_AND_RENDER(UpdateAndRender)
         glPolygonMode(GL_FRONT_AND_BACK, Mode);
     }
     
-    f32 XAngle = Pi32 * App->XOffset;
-    f32 YAngle = Pi32 * App->YOffset;
-    vertex Color = {HexToRGBV3(ColorPoint)};
     // Shader prep
     {    
+        vertex Color = {HexToRGBV3(ColorPoint)};
+        f32 XAngle = Pi32 * App->XOffset;
+        f32 YAngle = Pi32 * App->YOffset;
         glUniform2f(UAngle, XAngle, YAngle);
         glUniform3f(UColor, Color.X, Color.Y, Color.Z);
         

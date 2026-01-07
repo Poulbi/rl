@@ -44,29 +44,24 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
 #if OS_LINUX
             char *FileName = Params->Args[0];
             u32 SizeOfFileName = (u32)StringLength(FileName);
+#elif OS_WINDOWS
+            char *FileName = PushArray(PermanentArena, char, 1024);
+            u32 SizeOfFileName = GetModuleFileNameA(0, FileName, 1024);
+            Win32LogIfError();
+#else
+# error "OS not supported" 
+#endif
             for EachIndex(Idx, SizeOfFileName)
             {
-                if(FileName[Idx] == '/')
+                if(FileName[Idx] == OS_SlashChar)
                 {
                     OnePastLastSlash = (u32)Idx + 1;
                 }
             }
             
-#elif OS_WINDOWS
-												char *FileName = PushArray(PermanentArena, char, 256);
-            u32 SizeOfFileName = GetModuleFileNameA(0, FileName, sizeof(FileName));
-            for EachIndex(Idx, SizeOfFileName)
-            {
-                if(FileName[Idx] == '\\')
-                {
-                    OnePastLastSlash = (u32)Idx + 1;
-                }
-            }
-#else
-# error "OS not supported" 
-#endif
+            
             ExeDirPath.Data = (u8 *)FileName;
-												ExeDirPath.Size = OnePastLastSlash;
+            ExeDirPath.Size = OnePastLastSlash;
         }
         
         app_state AppState = {};
@@ -90,11 +85,11 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         
         s64 LastWriteTime = {};
 #if OS_LINUX        
-        Code.LibraryPath = PathFromExe(PermanentArena, &AppState, S8("./app.so"));
+        Code.LibraryPath = PathFromExe(PermanentArena, &AppState, S8("ex_app.so"));
         void *LinuxLibraryHandle = 0;
         Code.LibraryHandle = (umm)LinuxLibraryHandle;
 #else
-        Code.LibraryPath = PathFromExe(PermanentArena, &AppState, S8("./app.dll"));
+        Code.LibraryPath = PathFromExe(PermanentArena, &AppState, S8("ex_app.dll"));
         HMODULE Win32LibraryHandle = 0;
         Code.LibraryHandle = (umm)Win32LibraryHandle;
 #endif

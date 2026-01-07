@@ -24,7 +24,7 @@ Win32LogIfError_(char *File, s32 Line)
                   (LPTSTR)&ErrorMessage, 0, 0);
     if(ErrorCode)
     { 
-        Log(ERROR_FMT "%s\n", File, Line, ErrorMessage);
+        Log("%s(%d): ERROR(%d): %s\n", File, Line, ErrorCode, ErrorMessage);
         LocalFree(ErrorMessage);
     }
 }
@@ -52,6 +52,7 @@ OS_ReadEntireFileIntoMemory(char *FileName)
                 {
                     // NOTE(casey): File read successfully
                     Result.Size = FileSize32;
+                    CloseHandle(FileHandle);
                 }
                 else
                 {                    
@@ -74,13 +75,13 @@ OS_ReadEntireFileIntoMemory(char *FileName)
         else
         {
             Win32LogIfError();
-            ErrorLog("Could not open '%s' for reading.\n");
+            ErrorLog("Could not open '%s' for reading.\n", FileName);
         }
     }
     else
     {
         Win32LogIfError();
-        ErrorLog("Could not open '%s' for reading.\n");
+        ErrorLog("Could not open '%s' for reading.\n", FileName);
     }
     
     return Result;
@@ -173,9 +174,22 @@ OS_GetWallClock(void)
 }
 
 internal void
-OS_Sleep(u32 Seconds)
+OS_Sleep(u32 MicroSeconds)
 {
-    NotImplemented; 
+    
+    HANDLE Timer;
+    LARGE_INTEGER DueTime;
+    
+    Timer = CreateWaitableTimer(NULL, TRUE, NULL);
+    
+    // Negative value means relative time
+    // Time is in 100-nanosecond intervals
+    DueTime.QuadPart = (-(s32)(MicroSeconds * 10));
+    
+    SetWaitableTimer(Timer, &DueTime, 0, NULL, NULL, FALSE);
+    WaitForSingleObject(Timer, INFINITE);
+    CloseHandle(Timer);
+    
 }
 
 //~ Entrypoint
@@ -190,8 +204,6 @@ WinMain(HINSTANCE Instance,
     entry_point_params Params = {0};
     
     GlobalDebuggerIsAttached = raddbg_is_attached();
-    
-    DebugBreak;
     
     AllocConsole();
     FILE* stream;
