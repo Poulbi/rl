@@ -96,8 +96,8 @@ P_ContextInit(arena *Arena, app_offscreen_buffer *Buffer, b32 *Running)
                                       WS_OVERLAPPEDWINDOW|WS_VISIBLE,
                                       CW_USEDEFAULT,
                                       CW_USEDEFAULT,
-                                      CW_USEDEFAULT,
-                                      CW_USEDEFAULT,
+                                      Buffer->Width,
+                                      Buffer->Height,
                                       0,
                                       0,
                                       Instance,
@@ -175,15 +175,32 @@ P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buf
                     b32 WasDown = ((Message.lParam & (1 << 30)) != 0);
                     b32 IsDown = ((Message.lParam & (1 << 31)) == 0);
                     
-                    if(WasDown != IsDown)
+                    if(IsDown)
                     {
-                        if(IsDown)
+                        b32 AltKeyWasDown = (Message.lParam & (1 << 29));
+                        
+                        if((VKCode == VK_F4) && AltKeyWasDown)
                         {
-                            b32 AltKeyWasDown = (Message.lParam & (1 << 29));
-                            if((VKCode == VK_F4) && AltKeyWasDown)
-                            {
-                                *GlobalRunning = false;
-                            }
+                            *GlobalRunning = false;
+                        }
+                        
+                        app_text_button *Button = &Input->Text.Buffer[Input->Text.Count];
+                        *Button = {};
+                        Input->Text.Count += 1;
+                        
+                        if((VKCode >= 'A') && (VKCode <= 'Z'))
+                        {
+                            Button->Codepoint = ((VKCode - 'A') + 'a');
+                        }
+                        else
+                        {
+                            Button->IsSymbol = true;
+                            if(0) {}
+                            else if(VKCode == VK_UP) Button->Symbol = PlatformKey_Up;
+                            else if(VKCode == VK_DOWN) Button->Symbol = PlatformKey_Down;
+                            else if(VKCode == VK_LEFT) Button->Symbol = PlatformKey_Left;
+                            else if(VKCode == VK_RIGHT) Button->Symbol = PlatformKey_Right;
+                            
                         }
                     }
                 } break;
