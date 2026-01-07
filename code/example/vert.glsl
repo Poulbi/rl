@@ -49,7 +49,7 @@ void main()
     z = rot.z;
     
     f32 depth = z + offset.z;
-    gl_Position = v4(x/depth, y/depth, 0.0, 1.0);
+    gl_Position = v4(x, y, z, depth);
 #else
     gl_Position = v4(pos, 1.0f);
 #endif

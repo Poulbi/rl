@@ -175,9 +175,11 @@ P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buf
                     
                     if(IsDown)
                     {
-                        b32 AltKeyWasDown = (Message.lParam & (1 << 29));
+                        b32 Shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
                         
-                        if((VKCode == VK_F4) && AltKeyWasDown)
+                        b32 Alt = (Message.lParam & (1 << 29));
+                        
+                        if((VKCode == VK_F4) && Alt)
                         {
                             *GlobalRunning = false;
                         }
@@ -185,6 +187,9 @@ P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buf
                         app_text_button *Button = &Input->Text.Buffer[Input->Text.Count];
                         *Button = {};
                         Input->Text.Count += 1;
+                        
+                        if(Alt)   Button->Modifiers |= PlatformKeyModifier_Alt;
+                        if(Shift) Button->Modifiers |= PlatformKeyModifier_Shift;
                         
                         if((VKCode >= 'A') && (VKCode <= 'Z'))
                         {

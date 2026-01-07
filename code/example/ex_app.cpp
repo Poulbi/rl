@@ -43,8 +43,8 @@ typedef s32 face[4][3];
 #define Strs_DataPath           ".." SLASH "data" 
 #define Strs_FragmentShaderPath Strs_CodePath SLASH "frag.glsl"
 #define Strs_VertexShaderPath   Strs_CodePath SLASH "vert.glsl"
-#define Strs_ModelPath          Strs_DataPath SLASH "block_debug.obj"
-#define Strs_TexturePath        Strs_DataPath SLASH "block_debug.png"
+#define Strs_ModelPath          Strs_DataPath SLASH "bonhomme.obj"
+#define Strs_TexturePath        Strs_DataPath SLASH "bonhomme.png"
 
 #define HexToRGBV3(Hex) \
 ((f32)((Hex >> 8*2) & 0xFF)/255.0f), \
