@@ -74,8 +74,6 @@ P_ContextInit(arena *Arena, app_offscreen_buffer *Buffer, b32 *Running)
     
     win32_context *Context = PushStruct(Arena, win32_context);
     
-    DebugBreak;
-    
     GlobalShowCursor = true;
     GlobalRunning = Running;
     

@@ -3,7 +3,7 @@
 
 #include "lib/rl_libs.h"
 
-#define Strs_CodePath       ".."SLASH"code"SLASH"example" 
+#define Strs_CodePath       ".." SLASH "code" SLASH "example" 
 #define Strs_FragmentShaderPath Strs_CodePath SLASH "frag.glsl"
 #define Strs_VertexShaderPath   Strs_CodePath SLASH "vert.glsl"
 
@@ -439,7 +439,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
     
     // Read obj file
     {    
-        char *FileName = PathFromExe(FrameArena, App, S8(".."SLASH"data"SLASH"bonhomme.obj"));
+        char *FileName = PathFromExe(FrameArena, App, S8(".." SLASH "data" SLASH "bonhomme.obj"));
         str8 In = OS_ReadEntireFileIntoMemory(FileName);
         
         s32 InVerticesCount = 0;

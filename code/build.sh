@@ -30,7 +30,7 @@ windows=0
 Targets="hash/samples/cuversine/example [sort/app/gl/windows]\n"
 
 # Default
-[ "$#" = 0 ] && example=1 && gl=1
+[ "$#" = 0 ] && example=1 && app=1
 
 for Arg in "$@"; do eval "$Arg=1"; done
 # Exclusive flags
@@ -190,7 +190,7 @@ AppCompile()
   AppFlags="$AppFlags -DRL_FAST_COMPILE=1 $LibsFile"
  fi
  
- C_Compile "$Dir"/ex_app.cpp app.so "$AppFlags"
+ C_Compile "$Dir"/ex_app.cpp ex_app.so "$AppFlags"
  C_Compile $(Strip $Dir/ex_platform.cpp) "-lX11 -lGL -lGLX"
 }
 
@@ -210,9 +210,13 @@ then
 		-DRADDBG_MARKUP_STUBS=1
 		-Wno-writable-strings
 		"
+		printf '[debug mode]\n'
+		printf '[windows clang compile]\n'
 		LinkerFlags="-Wl,/DEBUG"
-	 clang $CompilerFlags example/ex_platform.cpp "$LinkerFlags" -o ../build/ex_platform.exe
-		clang $CompilerFlags -shared -fPIC example/ex_platform.cpp "$LinkerFlags" -o ../build/app.dll
+		printf './example/ex_platform.cpp\n'
+	 clang $CompilerFlags ./example/ex_platform.cpp -lgdi32 -lopengl32 "$LinkerFlags" -o ../build/ex_platform.exe
+		printf './example/ex_app.cpp\n'
+		clang $CompilerFlags -shared -fPIC -DBASE_NO_ENTRYPOINT=1 ./example/ex_app.cpp "$LinkerFlags" -o ../build/app.dll
 		DidWork=1
 	fi
 fi
