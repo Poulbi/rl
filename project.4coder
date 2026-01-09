@@ -18,7 +18,7 @@ patterns =
 blacklist_patterns = 
 {
     ".*",
-    "gl*.h"
+    "gl_core_3_3_debug.h"
 };
 
 paths = 

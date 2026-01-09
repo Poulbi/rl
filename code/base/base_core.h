@@ -47,6 +47,14 @@
 # define LANG_CPP 0
 #endif
 
+// Options for base layer
+#ifdef BASE_NO_ENTRYPOINT
+# undef BASE_NO_ENTRYPOINT
+# define BASE_NO_ENTRYPOINT 1
+#else
+# define BASE_NO_ENTRYPOINT 0
+#endif
+
 //~ OS
 #include <stdint.h>
 #include <stddef.h>
@@ -277,13 +285,50 @@ struct range_s64
 typedef struct v2 v2;
 struct v2
 {
-    f32 X, Y;
+    union { f32 X, x; };
+    union { f32 Y, y; };
 };
 
 typedef struct v3 v3;
 struct v3
 {
-    f32 X, Y, Z;
+    union 
+    {
+        struct 
+        {
+            union { f32 X, x; };
+            union { f32 Y, y; };
+            union { f32 Z, z; };
+        };
+        struct
+        {
+            union { f32 R, r; };
+            union { f32 G, g; };
+            union { f32 B, b; };
+        };
+    };
+};
+
+typedef struct v4 v4;
+struct v4
+{
+    union
+    {
+        struct
+        {
+            union { f32 X, x; };
+            union { f32 Y, y; };
+            union { f32 Z, z; };
+            union { f32 W, w; };
+        };
+        struct
+        {
+            union { f32 R, r; };
+            union { f32 G, g; };
+            union { f32 B, b; };
+            union { f32 A, a; };
+        };
+    };
 };
 
 //~ Globals

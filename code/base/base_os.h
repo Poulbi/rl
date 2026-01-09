@@ -39,6 +39,7 @@ internal void *OS_Allocate(umm Size);
 internal void  OS_BarrierWait(barrier Barrier);
 internal s64   OS_GetWallClock(void);
 internal void  OS_Sleep(u32 MicroSeconds);
+internal void  OS_ChangeDirectory(char *Path);
 //- OS agnostic, implemented in `base_os.c`.
 internal inline f32 OS_SecondsElapsed(s64 Start, s64 End);
 internal inline f32 OS_MSElapsed(s64 Start, s64 End);
@@ -48,6 +49,8 @@ internal void OS_ProfileAndPrint(char *Label);
 #define Log(Format, ...)      OS_PrintFormat((char *)(Format), ##__VA_ARGS__)
 // NOTE(luca): Append '\n', because this macro might be redefined into a visual error log.
 #define ErrorLog(Format, ...) Log(ERROR_FMT Format "\n", ERROR_ARG, ##__VA_ARGS__) 
+
+
 
 //- Helpers 
 

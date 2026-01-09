@@ -168,14 +168,24 @@ OS_Sleep(u32 MicroSeconds)
     usleep(MicroSeconds);
 }
 
-global_variable thread_context *DEBUGThreadContext; 
+internal void
+OS_ChangeDirectory(char *Path)
+{
+    if(chdir(Path) == -1)
+    {
+        perror("chdir");
+    }
+}
+
 
 //~ Entrypoint
+global_variable thread_context *DEBUGThreadContext; 
+
 ENTRY_POINT(ThreadInitEntryPoint)
 {
     ThreadInit(&Params->Context);
     DEBUGThreadContext = ThreadContext;
-#ifndef BASE_NO_ENTRYPOINT
+#if !BASE_NO_ENTRYPOINT
     EntryPoint(Params);
 #endif
     
@@ -203,10 +213,10 @@ LinuxSigHandler(int Signal, siginfo_t *Info, void *Arg)
             char FuncName[256], FileName[256];
             if(fgets(FuncName, sizeof(FuncName), Out) && fgets(FileName, sizeof(FileName), Out))
             {
-                str8 Func = S8CString(FuncName);
+                str8 Func = S8FromCString(FuncName);
                 if(Func.Size > 0) Func.Size -= 1;
-                str8 Module = S8SkipLastSlash(S8CString(Info.dli_fname));
-                str8 File = S8SkipLastSlash(S8CString(FileName));
+                str8 Module = S8SkipLastSlash(S8FromCString(Info.dli_fname));
+                str8 File = S8SkipLastSlash(S8FromCString(FileName));
                 if(File.Size > 0) File.Size -= 1;
                 Log("%lu. " S8Fmt ", " S8Fmt " " S8Fmt "\n",
                     Idx, S8Arg(Module), S8Arg(Func), S8Arg(File));
@@ -318,8 +328,10 @@ LinuxMainEntryPoint(int ArgsCount, char **Args)
     
 }
 
+#if !BASE_NO_ENTRYPOINT
 int main(int ArgsCount, char **Args)
 {
     LinuxMainEntryPoint(ArgsCount, Args);
     return 0;
 }
+#endif

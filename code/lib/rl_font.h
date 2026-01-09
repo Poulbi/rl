@@ -9,42 +9,6 @@
 #endif
 #include STB_TRUETYPE_INCLUDE_PATH
 
-typedef struct v2 v2;
-struct v2
-{
-    union { f32 X, x; };
-    union { f32 Y, y; };
-};
-
-typedef struct v3 v3;
-struct v3
-{
-    union 
-    {
-        struct 
-        {
-            union { f32 X, x; };
-            union { f32 Y, y; };
-            union { f32 Z, z; };
-        };
-        struct
-        {
-            union { f32 R, r; };
-            union { f32 G, g; };
-            union { f32 B, b; };
-        };
-    };
-};
-
-typedef struct v4 v4;
-struct v4
-{
-    union { f32 X, x; };
-    union { f32 Y, y; };
-    union { f32 Z, z; };
-    union { f32 W, w; };
-};
-
 struct app_font
 {
     stbtt_fontinfo Info;

@@ -27,10 +27,12 @@ app=0
 sort=0
 gl=0
 windows=0
-Targets="hash/samples/cuversine/example [sort/app/gl/windows]\n"
+cling=0
+Targets="hash/samples/cling/cuversine/example [sort/app/gl/windows]\n"
 
 # Default
-[ "$#" = 0 ] && example=1 && app=1
+# [ "$#" = 0 ] && example=1 && app=1
+[ "$#" = 0 ] && cling=1
 
 for Arg in "$@"; do eval "$Arg=1"; done
 # Exclusive flags
@@ -181,7 +183,7 @@ AppCompile()
 {
  Dir="$1"
 
- AppFlags="-fPIC --shared -DBASE_NO_ENTRYPOINT=1" 
+ AppFlags="-fPIC --shared" 
 
  LibsFile="../build/rl_libs.o"
  if [ "$fast" = 1 ]
@@ -201,24 +203,20 @@ then
  [ "$gl"   = 1 ] && AppCompile ./example/gl
 	if [ "$windows" = 1 ]
 	then
-		CompilerFlags="
-		-I.
-		-g -gcodeview
-		--target=x86_64-w64-mingw32
-		-fms-extensions
-		-fuse-ld=lld
-		-DRADDBG_MARKUP_STUBS=1
-		-Wno-writable-strings
-		"
 		printf '[debug mode]\n'
-		printf '[windows clang compile]\n'
-		LinkerFlags="-Wl,/DEBUG"
-		printf './example/ex_platform.cpp\n'
-	 clang $CompilerFlags ./example/ex_platform.cpp -lgdi32 -lopengl32 "$LinkerFlags" -o ../build/ex_platform.exe
-		printf './example/ex_app.cpp\n'
-		clang $CompilerFlags -shared -fPIC -DBASE_NO_ENTRYPOINT=1 ./example/ex_app.cpp "$LinkerFlags" -o ../build/app.dll
+		printf '[windows compile]\n'
+		printf 'call C:\BuildTools\devcmd.bat\ncall build.bat\n' | wine cmd.exe 2>/dev/null
 		DidWork=1
 	fi
+fi
+
+if [ "$cling" = 1 ]
+then 
+ [ ! -f "../build/cling" ] && 
+		clang -fdiagnostics-absolute-paths -D_GNU_SOURCE -Wno-writable-strings -I. -g -o ../build/cling ./cling/example.c
+	cd ..
+	./build/cling
+ DidWork=1
 fi
 
 #- End

@@ -1,3 +1,4 @@
+#define BASE_NO_ENTRYPOINT
 #include "base/base.h"
 #include "ex_platform.h"
 
@@ -671,8 +672,8 @@ UPDATE_AND_RENDER(UpdateAndRender)
         glEnable(GL_DEPTH_TEST);
 #endif
         
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(HexToRGBV3(Color_Background), 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glPointSize(10.0f);
         glLineWidth(1.0f);
         
