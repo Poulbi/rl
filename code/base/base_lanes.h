@@ -3,6 +3,8 @@
 #ifndef LANES_H
 #define LANES_H
 
+#include "base_arenas.h"
+
 typedef u64 barrier;
 
 typedef umm thread_handle;

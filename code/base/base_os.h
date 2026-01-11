@@ -48,9 +48,7 @@ internal void OS_ProfileAndPrint(char *Label);
 
 #define Log(Format, ...)      OS_PrintFormat((char *)(Format), ##__VA_ARGS__)
 // NOTE(luca): Append '\n', because this macro might be redefined into a visual error log.
-#define ErrorLog(Format, ...) Log(ERROR_FMT Format "\n", ERROR_ARG, ##__VA_ARGS__) 
-
-
+#define ErrorLog(Format, ...) Log(ERROR_FMT Format "\n", ERROR_ARG, ##__VA_ARGS__)
 
 //- Helpers 
 

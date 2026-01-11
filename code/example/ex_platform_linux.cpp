@@ -695,6 +695,7 @@ P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buf
                     XConfigureEvent *Event = (XConfigureEvent *)&WindowEvent;
                     Buffer->Width = Event->width;
                     Buffer->Height = Event->height;
+                    Buffer->Pitch = Buffer->BytesPerPixel*Buffer->Width;
                 } break;
                 
                 case DestroyNotify:

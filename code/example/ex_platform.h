@@ -5,7 +5,6 @@
 
 #include "ex_random.h"
 
-
 struct app_offscreen_buffer
 {
     s32 Width;

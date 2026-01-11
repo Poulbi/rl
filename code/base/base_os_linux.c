@@ -196,6 +196,7 @@ internal void
 LinuxSigHandler(int Signal, siginfo_t *Info, void *Arg)
 {
     Log("\nSignal received: %s (%d). The process is terminating.\n", strsignal(Signal), Signal);
+#if !ANDROID
     Log("Callstack:\n");
     
     void *IPs[4096] = {0};
@@ -225,6 +226,7 @@ LinuxSigHandler(int Signal, siginfo_t *Info, void *Arg)
     }
     
     _exit(1);
+#endif
 }
 
 internal void 

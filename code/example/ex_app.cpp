@@ -2,26 +2,13 @@
 #include "base/base.h"
 #include "ex_platform.h"
 
-#include "lib/rl_libs.h"
+#include "rl_libs.h"
+
+NO_WARNINGS_BEGIN
+#include "ex_font.h"
+NO_WARNINGS_END
 
 typedef unsigned int gl_handle;
-
-typedef struct vertex vertex;
-struct vertex
-{
-    f32 X;
-    f32 Y;
-    f32 Z;
-};
-
-typedef struct tex_coord tex_coord;
-struct tex_coord
-{
-    f32 X;
-    f32 Y;
-};
-
-typedef vertex normal;
 
 typedef s32 face[4][3];
 
@@ -44,6 +31,10 @@ typedef s32 face[4][3];
 #define Strs_DataPath           ".." SLASH "data" 
 #define Strs_FragmentShaderPath Strs_CodePath SLASH "frag.glsl"
 #define Strs_VertexShaderPath   Strs_CodePath SLASH "vert.glsl"
+#define Strs_TextVertexShaderPath     Strs_CodePath SLASH "vert_text.glsl"
+#define Strs_TextFragmentShaderPath   Strs_CodePath SLASH "frag_text.glsl"
+#define Strs_ButtonVertexShaderPath     Strs_CodePath SLASH "vert_button.glsl"
+#define Strs_ButtonFragmentShaderPath   Strs_CodePath SLASH "frag_button.glsl"
 #define Strs_ModelPath          Strs_DataPath SLASH "bonhomme.obj"
 #define Strs_TexturePath        Strs_DataPath SLASH "bonhomme.png"
 
@@ -54,6 +45,61 @@ typedef s32 face[4][3];
 
 
 //~ Helpers
+internal inline v2 
+V2AddV2(v2 A, v2 B)
+{
+    v2 Result = {};
+    Result.X = A.X + B.X;
+    Result.Y = A.Y + B.Y;
+    return Result;
+}
+
+internal inline v2 
+V2MulF32(v2 A, f32 B)
+{
+    v2 Result = {};
+    Result.X = A.X * B;
+    Result.Y = A.Y * B;
+    return Result;
+}
+
+internal inline v2
+V2SubV2(v2 A, v2 B)
+{
+    v2 Result = {};
+    Result.X = A.X - B.X;
+    Result.Y = A.Y - B.Y;
+    return Result;
+}
+
+internal inline v2
+V2S32(s32 X, s32 Y)
+{
+    v2 Result = {};
+    Result.X = (f32)X;
+    Result.Y = (f32)Y;
+    return Result;
+}
+
+internal inline v2
+V2MulV2(v2 A, v2 B)
+{
+    v2 Result = {};
+    Result.X = A.X * B.X;
+    Result.Y = A.Y * B.Y;
+    return Result;
+}
+
+internal inline b32
+InBounds(v2 A, v2 Min, v2 Max)
+{
+    b32 Result = !!((A.X >= Min.X && A.X < Max.X) &&
+                    (A.Y >= Min.Y && A.Y < Max.Y));
+    return Result;
+}
+
+//- 
+
 internal inline u32 *
 PixelFromBuffer(app_offscreen_buffer *Buffer, s32 X, s32 Y)
 {
@@ -127,6 +173,47 @@ CompileShaderFromSource(arena *Arena, app_state *App, str8 FileNameAfterExe, s32
     OS_FreeFileMemory(Source);
     
     return Handle;
+}
+
+internal gl_handle
+ProgramFromShaders(arena *Arena, app_state *App, str8 VertPath, str8 FragPath)
+{
+    gl_handle Program = 0;
+    
+    gl_handle VertexShader, FragmentShader;
+    VertexShader = CompileShaderFromSource(Arena, App, VertPath, GL_VERTEX_SHADER);
+    FragmentShader = CompileShaderFromSource(Arena, App, FragPath, GL_FRAGMENT_SHADER);
+    
+    Program = glCreateProgram();
+    glAttachShader(Program, VertexShader);
+    glAttachShader(Program, FragmentShader);
+    glLinkProgram(Program);
+    GLErrorStatus(Program, false);
+    
+    glDeleteShader(FragmentShader); 
+    glDeleteShader(VertexShader);
+    
+    return Program;
+}
+
+internal void
+LoadTextureFromImage(gl_handle Texture, s32 Width, s32 Height, u8 *Image, s32 Format, gl_handle ShaderProgram)
+{
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, Texture);
+    
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, Format, GL_UNSIGNED_BYTE, Image);
+    
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    // TODO(luca): Use mipmap
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    f32 Color[] = { 1.0f, 0.0f, 0.0f, 1.0f };
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, Color);
+    
+    gl_handle UTexture = glGetUniformLocation(ShaderProgram, "Texture"); 
+    glUniform1i(UTexture, 0);
 }
 
 //~ Sorting
@@ -338,6 +425,16 @@ ParseFloat(str8 Inner, u64 *Cursor)
     return Value;
 }
 
+internal void 
+ResetApp(app_state *App)
+{
+    App->Angle.X = 0.0f;
+    App->Angle.Y = 0.0f;
+    App->Offset.X =  0.0f;
+    App->Offset.Y =  0.0f;
+    App->Offset.Z = 3.0f;
+}
+
 C_LINKAGE 
 UPDATE_AND_RENDER(UpdateAndRender)
 {
@@ -391,11 +488,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
             }
             if(Key.Codepoint == 'r') 
             {
-                App->Angle.X = 0.0f;
-                App->Angle.Y = 0.0f;
-                App->Offset.X =  0.0f;
-                App->Offset.Y =  0.0f;
-                App->Offset.Z = 3.0f;
+                ResetApp(App);
             }
             if(Key.Codepoint == 'a') Animate = !Animate;
             if(Key.Codepoint  == ' ')
@@ -427,7 +520,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
     
     if(Animate)
     {
-        App->Angle.X += Input->dtForFrame;
+        App->Angle.X += Input->dtForFrame*4.0f;
     }
     
     App->Angle.X -= 2.0f*!!(App->Angle.X > 2.0f);
@@ -436,9 +529,9 @@ UPDATE_AND_RENDER(UpdateAndRender)
     App->Angle.Y += 2.0f*!!(App->Angle.Y < -2.0f);
     
     umm Count = 0;
-    vertex *Vertices = 0;
-    tex_coord *TexCoords = 0; 
-    normal *Normals = 0;
+    v3 *Vertices = 0;
+    v2 *TexCoords = 0; 
+    v3 *Normals = 0;
     
     // Read obj file
     {    
@@ -449,9 +542,9 @@ UPDATE_AND_RENDER(UpdateAndRender)
         s32 InTexCoordsCount = 0;
         s32 InNormalsCount = 0;
         s32 InFacesCount = 0;
-        vertex *InVertices = PushArray(FrameArena, vertex, In.Size);
-        tex_coord *InTexCoords = PushArray(FrameArena, tex_coord, In.Size);
-        normal *InNormals = PushArray(FrameArena, normal, In.Size);
+        v3 *InVertices = PushArray(FrameArena, v3, In.Size);
+        v2 *InTexCoords = PushArray(FrameArena, v2, In.Size);
+        v3 *InNormals = PushArray(FrameArena, v3, In.Size);
         face *InFaces = PushArray(FrameArena, face, In.Size);
         
         if(In.Size)
@@ -477,21 +570,21 @@ UPDATE_AND_RENDER(UpdateAndRender)
                     }
                     else if(S8Match(Keyword, S8("v"), false))
                     {
-                        New(vertex, Vertex, InVertices, InVerticesCount);
+                        New(v3, Vertex, InVertices, InVerticesCount);
                         Vertex->X = ParseFloat(In, &At);
                         Vertex->Y = ParseFloat(In, &At);
                         Vertex->Z = ParseFloat(In, &At);
                     }
                     else if(S8Match(Keyword, S8("vt"), false))
                     {
-                        New(tex_coord, TexCoord, InTexCoords, InTexCoordsCount);
+                        New(v2, TexCoord, InTexCoords, InTexCoordsCount);
                         TexCoord->X = ParseFloat(In, &At);
                         // NOTE(luca): When looking at the texture in renderdoc I noticed it was flipped.
                         TexCoord->Y = 1.0f - ParseFloat(In, &At);
                     }
                     else if(S8Match(Keyword, S8("vn"), false))
                     {
-                        New(normal, Normal, InNormals, InNormalsCount);
+                        New(v3, Normal, InNormals, InNormalsCount);
                         Normal->X = ParseFloat(In, &At);
                         Normal->Y = ParseFloat(In, &At);
                         Normal->Z = ParseFloat(In, &At);
@@ -536,14 +629,14 @@ UPDATE_AND_RENDER(UpdateAndRender)
         
         // Convert faces to triangles.
         {        
-            // TODO(luca): This should depend on the number of vertexes per face.  Blockbench always produces 4 so for now, we create a quad out of two triangles
+            // TODO(luca): This should depend on the number of vertices per face.  Blockbench always produces 4 so for now, we create a quad out of two triangles
             s32 Indices[] = {0, 1, 2, 0, 2, 3};
             s32 IndicesCount = ArrayCount(Indices);
             
             Count = InFacesCount*IndicesCount;
-            Vertices = PushArray(FrameArena, vertex, Count);
-            TexCoords = PushArray(FrameArena, tex_coord, Count);
-            Normals = PushArray(FrameArena, normal, Count);
+            Vertices = PushArray(FrameArena, v3, Count);
+            TexCoords = PushArray(FrameArena, v2, Count);
+            Normals = PushArray(FrameArena, v3, Count);
             
             for EachIndex(FaceIdx, InFacesCount)
             {
@@ -573,7 +666,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
     }
     
     s32 Major, Minor;
-    gl_handle VAO, VBO[2], Tex, ShaderProgram;
+    gl_handle VAO, VBO[2], Tex[2], ShaderProgram, TextShader, ButtonShader;
     gl_handle PosAttrib, TexAttrib, UOffset, UAngle, UColor;
     // Setup
     { 
@@ -582,55 +675,47 @@ UPDATE_AND_RENDER(UpdateAndRender)
         
         glViewport(0, 0, Buffer->Width, Buffer->Height);
         
-        gl_handle VertexShader, FragmentShader;
-        VertexShader = CompileShaderFromSource(FrameArena, App, S8(Strs_VertexShaderPath), GL_VERTEX_SHADER);
-        FragmentShader = CompileShaderFromSource(FrameArena, App, S8(Strs_FragmentShaderPath), GL_FRAGMENT_SHADER);
-        
-        ShaderProgram = glCreateProgram();
-        glAttachShader(ShaderProgram, VertexShader);
-        glAttachShader(ShaderProgram, FragmentShader);
-        glLinkProgram(ShaderProgram);
-        GLErrorStatus(ShaderProgram, false);
-        
-        glDeleteShader(FragmentShader); 
-        glDeleteShader(VertexShader);
-        
+        ShaderProgram = ProgramFromShaders(FrameArena, App, 
+                                           S8(Strs_VertexShaderPath),
+                                           S8(Strs_FragmentShaderPath));
         glUseProgram(ShaderProgram);
-        
-        glGenVertexArrays(1, &VAO); 
-        glBindVertexArray(VAO);
-        
-        glGenTextures(1, &Tex);
-        
-        glGenBuffers(2, &VBO[0]);  
-        {        
-            glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(vertex)*Count, Vertices, GL_STATIC_DRAW);
-            
-            PosAttrib = glGetAttribLocation(ShaderProgram, "pos");
-            glEnableVertexAttribArray(PosAttrib);
-            glVertexAttribPointer(PosAttrib, 3, GL_FLOAT, GL_FALSE, 3*sizeof(f32), 0);
-            
-            glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(tex_coord)*Count, TexCoords, GL_STATIC_DRAW);
-            
-            TexAttrib = glGetAttribLocation(ShaderProgram, "tex");
-            glEnableVertexAttribArray(TexAttrib);
-            glVertexAttribPointer(TexAttrib, 2, GL_FLOAT, GL_FALSE, 2*sizeof(f32), 0);
-        }
-        
-        UOffset = glGetUniformLocation(ShaderProgram, "offset");
-        UAngle = glGetUniformLocation(ShaderProgram, "angle");
-        UColor = glGetUniformLocation(ShaderProgram, "color");
-        
-        b32 Fill = true;
-        s32 Mode = (Fill) ? GL_FILL : GL_LINE;
-        glPolygonMode(GL_FRONT_AND_BACK, Mode);
     }
     
-    // Prep data for shaders
+    glGenVertexArrays(1, &VAO); 
+    glBindVertexArray(VAO);
+    
+    glGenTextures(2, &Tex[0]);
+    
+    glGenBuffers(2, &VBO[0]);  
+    {        
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(v3)*Count, Vertices, GL_STATIC_DRAW);
+        
+        PosAttrib = glGetAttribLocation(ShaderProgram, "pos");
+        glEnableVertexAttribArray(PosAttrib);
+        glVertexAttribPointer(PosAttrib, 3, GL_FLOAT, GL_FALSE, sizeof(v3), 0);
+        
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(v2)*Count, TexCoords, GL_STATIC_DRAW);
+        
+        TexAttrib = glGetAttribLocation(ShaderProgram, "tex");
+        glEnableVertexAttribArray(TexAttrib);
+        glVertexAttribPointer(TexAttrib, 2, GL_FLOAT, GL_FALSE, sizeof(v2), 0);
+    }
+    
+    UOffset = glGetUniformLocation(ShaderProgram, "offset");
+    UAngle = glGetUniformLocation(ShaderProgram, "angle");
+    UColor = glGetUniformLocation(ShaderProgram, "color");
+    
+    b32 Fill = true;
+    s32 Mode = (Fill) ? GL_FILL : GL_LINE;
+    glPolygonMode(GL_FRONT_AND_BACK, Mode);
+    
+    // Draw model
     {    
-        vertex Color = {HexToRGBV3(Color_Point)};
+        glEnable(GL_DEPTH_TEST);
+        
+        v3 Color = {HexToRGBV3(Color_Point)};
         f32 XAngle = Pi32 * App->Angle.X;
         f32 YAngle = Pi32 * App->Angle.Y;
         glUniform2f(UAngle, XAngle, YAngle);
@@ -641,38 +726,15 @@ UPDATE_AND_RENDER(UpdateAndRender)
         {
             local_persist int Width, Height, Components;
             local_persist u8 *Image = 0;
-            
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, Tex);
-            
             char *ImagePath = PathFromExe(FrameArena, App, S8(Strs_TexturePath));
             if(!Image) 
             {
                 Image = stbi_load(ImagePath, &Width, &Height, &Components, 0);
             }
             
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Image);
-            glUniform1i(glGetUniformLocation(ShaderProgram, "Texture"), 0);
-            
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-            // TODO(luca): Use mipmap
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            f32 Color[] = { 1.0f, 0.0f, 0.0f, 1.0f };
-            glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, Color);
+            LoadTextureFromImage(Tex[0], Width, Height, Image, GL_RGBA, ShaderProgram);
         }
-        
-    }
-    
-    // Drawing
-    {
-#if 1
-        glDisable(GL_DEPTH_TEST);
-        glEnable(GL_DEPTH_TEST);
-#endif
-        
-        glClearColor(HexToRGBV3(Color_Background), 0.0f);
+        glClearColor(HexToRGBV3(Color_BackgroundSecond), 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glPointSize(10.0f);
         glLineWidth(1.0f);
@@ -680,12 +742,157 @@ UPDATE_AND_RENDER(UpdateAndRender)
         glDrawArrays(GL_TRIANGLES, 0, (int)Count);
     }
     
+    // NOTE(luca): For software rasterization
+    app_offscreen_buffer TextImage = {};
+    TextImage.Width = 960;
+    TextImage.Height = 960;
+    TextImage.BytesPerPixel = 4;
+    TextImage.Pitch = TextImage.BytesPerPixel*TextImage.Width;
+    umm Size = TextImage.BytesPerPixel*(TextImage.Height*TextImage.Width);
+    TextImage.Pixels = PushArray(FrameArena, u8, Size);
+    MemorySet(TextImage.Pixels, 0, Size);
+    
+    // Draw Button
+    {
+        glDisable(GL_DEPTH_TEST);
+        
+        v2 Min = {0.05f, 0.11f};
+        v2 Max = {Min.X + 0.11f, Min.Y + 0.05f};
+        
+        // Draw the button
+        {
+            // Prepare a quad
+            s32 Count = 6;
+            
+            Vertices[0] = {-1.0f, -1.0f, -1.0f}; // BL
+            Vertices[1] = { 1.0f, -1.0f, -1.0f}; // BR
+            Vertices[2] = {-1.0f,  1.0f, -1.0f}; // TL
+            Vertices[3] = {-1.0f,  1.0f, -1.0f}; // TL
+            Vertices[4] = { 1.0f,  1.0f, -1.0f}; // TR
+            Vertices[5] = { 1.0f, -1.0f, -1.0f}; // BR
+            
+            v3 Color = {};
+            // Check if hovered or clicked.
+            {
+                v2 Pos = V2S32(Input->MouseX, Input->MouseY);
+                v2 Dim = V2S32(Buffer->Width, Buffer->Height);
+                v2 ButtonMin = V2MulV2(Min, Dim); 
+                v2 ButtonMax = V2MulV2(Max, Dim);
+                
+                b32 Hovered = false;
+                b32 Clicked = false;
+                Hovered = !!InBounds(Pos, ButtonMin, ButtonMax);;
+                Clicked = !!(Hovered && Input->Buttons[PlatformButton_Left].EndedDown);
+                
+                Color = ((Clicked) ? (v3){HexToRGBV3(Color_ButtonPressed)} :
+                         (Hovered) ? (v3){HexToRGBV3(Color_ButtonHovered)} :
+                         (v3){HexToRGBV3(Color_Button)});
+                
+                if(Clicked) 
+                {
+                    Animate = false;
+                    ResetApp(App);
+                }
+                
+                
+            }
+            
+            ButtonShader = ProgramFromShaders(FrameArena, App,
+                                              S8(Strs_ButtonVertexShaderPath), S8(Strs_ButtonFragmentShaderPath));
+            glUseProgram(ButtonShader);
+            
+            {            
+                glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
+                
+                PosAttrib = glGetAttribLocation(ButtonShader, "pos");
+                glEnableVertexAttribArray(PosAttrib);
+                glVertexAttribPointer(PosAttrib, 3, GL_FLOAT, GL_FALSE, sizeof(v3), 0);
+                
+                glBufferData(GL_ARRAY_BUFFER, sizeof(v3)*Count, Vertices, GL_STATIC_DRAW);
+            }
+            
+            gl_handle UColor = glGetUniformLocation(ButtonShader, "color");
+            gl_handle UButtonMin = glGetUniformLocation(ButtonShader, "buttonMin");
+            gl_handle UButtonMax = glGetUniformLocation(ButtonShader, "buttonMax");
+            
+            glUniform2f(UButtonMin, Min.X, Min.Y);
+            glUniform2f(UButtonMax, Max.X, Max.Y);
+            glUniform3f(UColor, Color.R, Color.G, Color.B);
+            
+            glDrawArrays(GL_TRIANGLES, 0, Count);
+        }
+        
+        // Draw the text
+        {
+            glEnable(GL_BLEND);  
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
+            glDisable(GL_DEPTH_TEST);
+            
+            TextShader = ProgramFromShaders(FrameArena, App, 
+                                            S8(Strs_TextVertexShaderPath),
+                                            S8(Strs_TextFragmentShaderPath));
+            glUseProgram(TextShader);
+            
+            f32 HeightPx = (f32)(TextImage.Width/30);
+            
+            local_persist app_font Font = {};
+            if(!Font.Initialized)
+            {
+                char *FontPath = PathFromExe(FrameArena, App, S8("../data/font.ttf"));
+                rlf_InitFont(&Font, FontPath);
+            }
+            
+            f32 FontScale = stbtt_ScaleForPixelHeight(&Font.Info, HeightPx);
+            f32 Baseline = rlf_GetBaseLine(&Font, FontScale);
+            
+            f32 X = (Min.X * (f32)TextImage.Width);
+            f32 Y = (Min.Y * (f32)TextImage.Height);
+            rlf_DrawTextFormat(FrameArena, &TextImage, &Font, 
+                               HeightPx, {X, Y + Baseline}, Color_ButtonText, false,
+                               " Reset");
+            
+            LoadTextureFromImage(Tex[1], TextImage.Width, TextImage.Height, TextImage.Pixels, GL_BGRA, TextShader);
+            
+            s32 Count = 6;
+            Vertices[0] = {-1.0f, 1.0f, 0.0f}; // TL
+            Vertices[1] = {1.0f, 1.0f, 0.0f}; // TR
+            Vertices[2] = {-1.0f, -1.0f, 0.0f}; // BL
+            Vertices[3] = {-1.0f, -1.0f, 0.0f}; // BL
+            Vertices[4] = {1.0f, -1.0f, 0.0f}; // BR
+            Vertices[5] = {1.0f, 1.0f, 0.0f}; // TR
+            for EachIndex(Idx, Count) 
+            {
+                Vertices[Idx].Z = -1.0f;
+                TexCoords[Idx].X = (Vertices[Idx].X + 1.0f) * 0.5f;
+                TexCoords[Idx].Y = (1.0f - (Vertices[Idx].Y + 1.0f) * 0.5f);
+            }
+            
+            glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(v3)*Count, Vertices, GL_STATIC_DRAW);
+            
+            PosAttrib = glGetAttribLocation(ShaderProgram, "pos");
+            glEnableVertexAttribArray(PosAttrib);
+            glVertexAttribPointer(PosAttrib, 3, GL_FLOAT, GL_FALSE, sizeof(v3), 0);
+            
+            glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(v2)*Count, TexCoords, GL_STATIC_DRAW);
+            
+            TexAttrib = glGetAttribLocation(TextShader, "tex");
+            glEnableVertexAttribArray(TexAttrib);
+            glVertexAttribPointer(TexAttrib, 2, GL_FLOAT, GL_FALSE, sizeof(v2), 0);
+            
+            glDrawArrays(GL_TRIANGLES, 0, Count);
+        }
+    }
+    
     // Cleanup
     {    
         glDeleteBuffers(2, &VBO[0]);
         glDeleteVertexArrays(1, &VAO);
-        glDeleteTextures(1, &Tex);
+        glDeleteTextures(2, &Tex[0]);
         glDeleteProgram(ShaderProgram);
+        glDeleteProgram(TextShader);
+        glDeleteProgram(ButtonShader);
     }
     
     OS_ProfileAndPrint("GL");

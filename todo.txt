@@ -1,6 +1,9 @@
 Example App
 - mouse dragging
 - animating "bones"
+- Path from exe -> simplify
+- Create all path strings at initialization
+- mdesk
 
 Base
 - tag calls with callstack

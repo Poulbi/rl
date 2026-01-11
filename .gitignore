@@ -1,6 +1,8 @@
 build
 data
+*.keystore
 
 .*
 *.swp
 *~
+

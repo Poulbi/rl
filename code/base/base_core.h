@@ -139,14 +139,18 @@ do { if(!(Expression)) TrapMsg(Format, ##__VA_ARGS__); } while(0)
 #define EachInRange(Index, Range)         (umm Index = (Range).Min; Index < (Range).Max; Index += 1)
 #define EachNode(Index, type, First)      (type *Index = First; Index != 0; Index = Index->next)
 
-#define MemoryCopy memcpy
-#define MemorySet  memset
-#define MemoryMove memmove
+#define MemoryCopy(Dest, Source, Count) memmove(Dest, Source, Count)
+#define MemorySet(Dest, Value, Count)  memset(Dest, Value, Count)
 
 //~ Keywords
 #define internal static 
 #define local_persist static 
 #define global_variable static
+
+#if RL_FAST_COMPILE
+# undef internal
+# define internal
+#endif
 
 #if COMPILER_MSVC
 # define thread_static __declspec(thread)

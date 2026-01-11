@@ -28,11 +28,12 @@ sort=0
 gl=0
 windows=0
 cling=0
-Targets="hash/samples/cling/cuversine/example [sort/app/gl/windows]\n"
+rldroid=0
+Targets="hash/samples/cling/rldroid/cuversine/example [sort/app/gl/windows]\n"
 
 # Default
-# [ "$#" = 0 ] && example=1 && app=1
-[ "$#" = 0 ] && cling=1
+[ "$#" = 0 ] && example=1 && app=1
+# [ "$#" = 0 ] && rldroid=1
 
 for Arg in "$@"; do eval "$Arg=1"; done
 # Exclusive flags
@@ -108,13 +109,6 @@ C_Compile()
 
  Flags="${3:-}"
 
- [ "$debug"   = 1 ] && printf '[debug mode]\n'
- [ "$release" = 1 ] && printf '[release mode]\n'
-
- [ "$gcc"   = 1 ] && Compiler="g++"
- [ "$clang" = 1 ] && Compiler="clang"
- printf '[%s compile]\n' "$Compiler"
- 
  # NOTE(luca): _GNU_SOURCE is only for C source files since it is enabled by default in c++.
  CommonCompilerFlags="-fsanitize-trap -nostdinc++ -fno-threadsafe-statics -I$ScriptDirectory -D_GNU_SOURCE=1"
  CommonWarningFlags="-Wall -Wextra -Wconversion -Wdouble-promotion -Wno-sign-conversion -Wno-sign-compare -Wno-double-promotion -Wno-unused-but-set-variable -Wno-unused-variable -Wno-write-strings -Wno-pointer-arith -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers"
@@ -165,6 +159,12 @@ then
  DidWork=1
 fi
 
+[ "$debug"   = 1 ] && printf '[debug mode]\n'
+[ "$release" = 1 ] && printf '[release mode]\n'
+[ "$gcc"   = 1 ] && Compiler="g++"
+[ "$clang" = 1 ] && Compiler="clang"
+printf '[%s compile]\n' "$Compiler"
+
 [ "$hash" = 1 ] && C_Compile $(Strip ./hash/hash.c)
 if [ "$samples" = 1 ]
 then
@@ -188,10 +188,9 @@ AppCompile()
  LibsFile="../build/rl_libs.o"
  if [ "$fast" = 1 ]
  then
-  [ ! -f "$LibsFile" ] && C_Compile lib/rl_libs.h "$LibsFile" "-fPIC -x c++ -c -Wno-unused-command-line-argument"
+  [ ! -f "$LibsFile" ] && C_Compile "$Dir"/rl_libs.h "$LibsFile" "-fPIC -x c++ -c -Wno-unused-command-line-argument"
   AppFlags="$AppFlags -DRL_FAST_COMPILE=1 $LibsFile"
  fi
- 
  C_Compile "$Dir"/ex_app.cpp ex_app.so "$AppFlags"
  C_Compile $(Strip $Dir/ex_platform.cpp) "-lX11 -lGL -lGLX"
 }
@@ -216,6 +215,13 @@ then
 		clang -fdiagnostics-absolute-paths -D_GNU_SOURCE -Wno-writable-strings -I. -g -o ../build/cling ./cling/example.c
 	cd ..
 	./build/cling
+ DidWork=1
+fi
+
+if [ "$rldroid" = 1 ] 
+then
+ cd ./lib/rawdrawandroid/
+ make -B push run
  DidWork=1
 fi
 
