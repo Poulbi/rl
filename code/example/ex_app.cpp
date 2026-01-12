@@ -452,7 +452,7 @@ str8 FormatText(arena *Arena, char *Format, ...)
 
 internal b32
 DrawButton(arena *Arena, app_offscreen_buffer *Buffer, app_offscreen_buffer *TextImage, 
-           app_input *Input, app_font *Font, app_state *App,
+           app_input *Input, app_font *Font,
            gl_handle ButtonShader, gl_handle TextShader, gl_handle *VBO, gl_handle Tex, 
            v2 Min, v2 Max, str8 Text)
 {
@@ -483,6 +483,10 @@ DrawButton(arena *Arena, app_offscreen_buffer *Buffer, app_offscreen_buffer *Tex
                  V3(HexToRGBV3(Color_Button)));
     }
     
+    glEnable(GL_BLEND);  
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
+    glDisable(GL_DEPTH_TEST);
+    
     // Draw button background
     {    
         // TODO(luca): Use one big buffer
@@ -490,13 +494,7 @@ DrawButton(arena *Arena, app_offscreen_buffer *Buffer, app_offscreen_buffer *Tex
         v2 ClipMin = V2MulV2(V2AddF32(V2MulF32(Min, 2.0f), -1.0f), V2(1.0f, -1.0f));
         v2 ClipMax = V2MulV2(V2AddF32(V2MulF32(Max, 2.0f), -1.0f), V2(1.0f, -1.0f));
         
-        Vertices[0] = {ClipMin.X, ClipMin.Y, -1.0f}; // BL
-        Vertices[1] = {ClipMax.X, ClipMin.Y, -1.0f}; // BR
-        Vertices[2] = {ClipMin.X, ClipMax.Y, -1.0f}; // TL
-        Vertices[3] = {ClipMin.X, ClipMax.Y, -1.0f}; // TL
-        Vertices[4] = {ClipMax.X, ClipMax.Y, -1.0f}; // TR
-        Vertices[5] = {ClipMax.X, ClipMin.Y, -1.0f}; // BR
-        for EachIndex(Idx, Count) Vertices[Idx].Z = -1.0f;
+        MakeQuadV3(Vertices, ClipMin, ClipMax, -1.0f);
         
         SetProvokingV3(Colors, Color);
         SetProvokingV2(ButtonMinima, Min);
@@ -508,10 +506,6 @@ DrawButton(arena *Arena, app_offscreen_buffer *Buffer, app_offscreen_buffer *Tex
         gl_LoadFloatsIntoBuffer(VBO[1], ButtonShader, "color", Count, 3, Colors);
         gl_LoadFloatsIntoBuffer(VBO[2], ButtonShader, "buttonMin", Count, 2, ButtonMinima);
         gl_LoadFloatsIntoBuffer(VBO[3], ButtonShader, "buttonMax", Count, 2, ButtonMaxima);
-        
-        glEnable(GL_BLEND);  
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
-        glDisable(GL_DEPTH_TEST);
         
         glDrawArrays(GL_TRIANGLES, 0, Count);
     }
@@ -527,36 +521,6 @@ DrawButton(arena *Arena, app_offscreen_buffer *Buffer, app_offscreen_buffer *Tex
         f32 Y = (Min.Y * (f32)TextImage->Height);
         rlf_DrawText(Arena, TextImage, Font, 
                      HeightPx, Text, {X, Y + Baseline}, Color_ButtonText, false);
-        
-        glEnable(GL_BLEND);  
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
-        glDisable(GL_DEPTH_TEST);
-        
-        glUseProgram(TextShader);
-        
-        gl_LoadTextureFromImage(Tex, TextImage->Width, TextImage->Height, TextImage->Pixels, GL_BGRA, TextShader);
-        
-        s32 Count = 6;
-        Vertices[0] = {-1.0f, 1.0f, 0.0f}; // TL
-        Vertices[1] = {1.0f, 1.0f, 0.0f}; // TR
-        Vertices[2] = {-1.0f, -1.0f, 0.0f}; // BL
-        Vertices[3] = {-1.0f, -1.0f, 0.0f}; // BL
-        Vertices[4] = {1.0f, -1.0f, 0.0f}; // BR
-        Vertices[5] = {1.0f, 1.0f, 0.0f}; // TR
-        
-        v2 *TexCoords = ButtonMinima;
-        
-        for EachIndex(Idx, Count) 
-        {
-            Vertices[Idx].Z = -1.0f;
-            TexCoords[Idx].X = (Vertices[Idx].X + 1.0f) * 0.5f;
-            TexCoords[Idx].Y = (1.0f - (Vertices[Idx].Y + 1.0f) * 0.5f);
-        }
-        
-        gl_LoadFloatsIntoBuffer(VBO[0], TextShader, "pos", Count, 3, Vertices);
-        gl_LoadFloatsIntoBuffer(VBO[1], TextShader, "tex", Count, 2, TexCoords);
-        
-        glDrawArrays(GL_TRIANGLES, 0, Count);
     }
     
     return Clicked;
@@ -884,7 +848,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
         v2 Min = {0.03f, 0.25f};
         v2 Max = {Min.X + 0.11f, Min.Y + 0.05f};
         
-        b32 Clicked = DrawButton(FrameArena, Buffer, &TextImage, Input, &App->Font, App,
+        b32 Clicked = DrawButton(FrameArena, Buffer, &TextImage, Input, &App->Font,
                                  ButtonShader, TextShader, VBO, Tex[1],
                                  Min, Max, S8(" Reset"));
         if(Clicked) 
@@ -902,11 +866,34 @@ UPDATE_AND_RENDER(UpdateAndRender)
         str8 Text = FormatText(FrameArena, " %s", ModelNames[Idx]);
         if(Text.Size > 6) Text.Size = 6;
         
-        b32 Clicked = DrawButton(FrameArena, Buffer, &TextImage, Input, &App->Font, App,
+        b32 Clicked = DrawButton(FrameArena, Buffer, &TextImage, Input, &App->Font, 
                                  ButtonShader, TextShader, VBO, Tex[1],
                                  Min, Max, Text);
         if(Clicked) App->CurrentModel = Models[Idx];
         Min.y += 0.06f;
+    }
+    
+    // Draw all text
+    {    
+        glUseProgram(TextShader);
+        
+        gl_LoadTextureFromImage(Tex[1], TextImage.Width, TextImage.Height, TextImage.Pixels, GL_BGRA, TextShader);
+        
+        s32 Count = 6;
+        MakeQuadV3(Vertices, V2(-1.0f, -1.0f), V2(1.0f, 1.0f), -1.0f);
+        MakeQuadV2(TexCoords, V2(0.0f, 0.0f), V2(1.0f, 1.0f));
+        
+        for EachIndex(Idx, Count) 
+        {
+            Vertices[Idx].Z = -1.0f;
+            TexCoords[Idx].X = (Vertices[Idx].X + 1.0f) * 0.5f;
+            TexCoords[Idx].Y = (1.0f - (Vertices[Idx].Y + 1.0f) * 0.5f);
+        }
+        
+        gl_LoadFloatsIntoBuffer(VBO[0], TextShader, "pos", Count, 3, Vertices);
+        gl_LoadFloatsIntoBuffer(VBO[1], TextShader, "tex", Count, 2, TexCoords);
+        
+        glDrawArrays(GL_TRIANGLES, 0, Count);
     }
     
     OS_ProfileAndPrint("GL Draw buttons");

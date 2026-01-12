@@ -78,7 +78,11 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         
         s64 LastCounter = OS_GetWallClock();
         s64 FlipWallClock = LastCounter;
+#if EX_FORCE_UPDATE_HZ
+        f32 GameUpdateHz = EX_FORCE_UPDATE_HZ;
+#else
         f32 GameUpdateHz = 144.0f;
+#endif
         f32 TargetSecondsPerFrame = 1.0f/GameUpdateHz; 
         
         app_code Code = {};

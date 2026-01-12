@@ -97,4 +97,27 @@ SetProvokingV2(v2 Quad[6], v2 Vertex)
     Quad[5] = Vertex;
 }
 
+internal inline void
+MakeQuadV2(v2 Quad[6], v2 Min, v2 Max)
+{
+    Quad[0] = {Min.X, Min.Y}; // BL
+    Quad[1] = {Max.X, Min.Y}; // BR
+    Quad[2] = {Min.X, Max.Y}; // TL
+    Quad[3] = {Min.X, Max.Y}; // TL
+    Quad[4] = {Max.X, Max.Y}; // TR
+    Quad[5] = {Max.X, Min.Y}; // BR
+}
+
+internal inline void
+MakeQuadV3(v3 Quad[6], v2 Min, v2 Max, f32 Z)
+{
+    Quad[0] = {Min.X, Min.Y, 0.0f}; // BL
+    Quad[1] = {Max.X, Min.Y, 0.0f}; // BR
+    Quad[2] = {Min.X, Max.Y, 0.0f}; // TL
+    Quad[3] = {Min.X, Max.Y, 0.0f}; // TL
+    Quad[4] = {Max.X, Max.Y, 0.0f}; // TR
+    Quad[5] = {Max.X, Min.Y, 0.0f}; // BR
+    for EachIndex(Idx, 6) Quad[Idx].Z = Z;
+}
+
 #endif //EX_MATH_H

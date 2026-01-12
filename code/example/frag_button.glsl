@@ -28,11 +28,10 @@ void main()
     v2 Size = Max - Min;
     v2 Pos = (LocalPos - Min);
     
-    v2 Bilateral = 2.0f*(Pos/Size) - 1.0f;
+    v2 PosInBox = (2.0f*(Pos/Size) - 1.0f);
     
-    f32 Distance = RoundedBox(Bilateral, 0.2f);
+    f32 Distance = RoundedBox(PosInBox, 0.2f);
     f32 Alpha = 1.0 - smoothstep(0.0, 0.01, Distance);
     
     FragColor = v4(Color, Alpha);
-    
 }
