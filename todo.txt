@@ -17,6 +17,12 @@ Example App
 
 Misc
 - metadesk for build targets
+- hot reloading for asset files in debug mode
+		- store hash of asset file + last write time
+				if last_write_time != last_modified
+					if old_hash != hash
+						reload file
+					last_write_time = last_modified
 
 Base
 - tag calls with callstack

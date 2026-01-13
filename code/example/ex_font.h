@@ -175,7 +175,6 @@ rlf_DrawText(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font, f32 Hei
         s32 AdvanceWidth, LeftSideBearing;
         s32 X0, Y0, X1, Y1;
         u8 *FontBitmap = 0;
-        // TODO(luca): Get rid of malloc.
         stbtt_GetCodepointBitmapBox(&Font->Info, CharAt, 
                                     FontScale, FontScale, 
                                     &X0, &Y0, &X1, &Y1);
@@ -185,7 +184,6 @@ rlf_DrawText(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font, f32 Hei
         stbtt_MakeCodepointBitmap(&Font->Info, FontBitmap, 
                                   FontWidth, FontHeight, FontWidth, 
                                   FontScale, FontScale, CharAt);
-        
         
         stbtt_GetCodepointHMetrics(&Font->Info, CharAt, &AdvanceWidth, &LeftSideBearing);
         

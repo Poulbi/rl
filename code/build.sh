@@ -30,7 +30,8 @@ gl=0
 windows=0
 cling=0
 rldroid=0
-Targets="hash/samples/cling/rldroid/cuversine/example [sort/app/gl/windows]\n"
+libs=0
+Targets="hash/samples/cling/rldroid/cuversine/example [sort/app/gl/windows/libs]\n"
 
 # Default
 [ "$#" = 0 ] && example=1 && app=1
@@ -117,7 +118,7 @@ C_Compile()
  DebugFlags="-g -ggdb -g3"
  ReleaseFlags="-O3"
 
- ClangFlags="-fdiagnostics-absolute-paths -fsanitize-undefined-trap-on-error -ftime-trace
+ ClangFlags="-fno-omit-frame-pointer -fdiagnostics-absolute-paths -fsanitize-undefined-trap-on-error -ftime-trace
 -Wno-null-dereference -Wno-missing-braces -Wno-vla-extension -Wno-writable-strings   -Wno-address-of-temporary -Wno-int-to-void-pointer-cast -Wno-reorder-init-list -Wno-c99-designator"
 
  GCCFlags="-Wno-cast-function-type -Wno-missing-field-initializers -Wno-int-to-pointer-cast"
@@ -189,7 +190,7 @@ AppCompile()
  LibsFile="../build/rl_libs.o"
  if [ "$fast" = 1 ]
  then
-  [ ! -f "$LibsFile" ] && C_Compile "$Dir"/rl_libs.h "$LibsFile" "-fPIC -x c++ -c -Wno-unused-command-line-argument"
+		{ [ ! -f "$LibsFile" ] || [ "$libs" = 1 ]; } && C_Compile "$Dir"/rl_libs.h "$LibsFile" "-fPIC -x c++ -c -Wno-unused-command-line-argument"
   AppFlags="$AppFlags -DRL_FAST_COMPILE=1 $LibsFile"
  fi
  C_Compile "$Dir"/ex_app.cpp ex_app.so "$AppFlags $ExtraFlags"

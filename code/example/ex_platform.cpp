@@ -111,7 +111,6 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             
             OS_ProfileAndPrint("InitSetup");
             
-            // Load application code
             P_LoadAppCode(FrameArena, &Code, &AppMemory, &LastWriteTime);
             OS_ProfileAndPrint("Code");
             

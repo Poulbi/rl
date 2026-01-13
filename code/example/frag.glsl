@@ -17,6 +17,6 @@ void main()
     v4 TexColor = texture(Texture, TexCoord);
     FragColor = TexColor;
 #else
-    FragColor = v4(Color, 1.0f);
+    FragColor = v4(Color, 1.0);
 #endif
 }

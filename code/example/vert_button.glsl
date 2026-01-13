@@ -6,13 +6,13 @@
 #define f32 float
 
 in v3 pos;
-in v3 color;
+in v4 color;
 in v2 buttonMin;
 in v2 buttonMax;
 in f32 radius;
 
 out v2 LocalPos;
-flat out v3 Color;
+flat out v4 Color;
 flat out v2 ButtonMin;
 flat out v2 ButtonMax;
 flat out f32 Radius;
@@ -26,5 +26,5 @@ void main()
     
     LocalPos = pos.xy;
     
-    gl_Position = v4(pos, 1.0f);
+    gl_Position = v4(pos, 1.0);
 }

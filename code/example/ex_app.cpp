@@ -6,7 +6,6 @@
 
 #include "rl_libs.h"
 
-
 #define New(type, Name, Array, Count) type *Name = Array + Count; Count += 1;
 
 //~ Constants
@@ -41,9 +40,21 @@ S8(Strs_ModelsPath Folder SLASH "texture.png") \
 
 global_variable model_path Models[] = 
 {
-    ModelPathFromFolder("gold"),
     ModelPathFromFolder("plant"),
+    ModelPathFromFolder("blanket"),
+    ModelPathFromFolder("fly"),
+    ModelPathFromFolder("coins"),
+    ModelPathFromFolder("gold"),
     ModelPathFromFolder("bucket"),
+    ModelPathFromFolder("golem"),
+    ModelPathFromFolder("crab"),
+    ModelPathFromFolder("eve"),
+    
+    ModelPathFromFolder("lutin"),
+    ModelPathFromFolder("banc"),
+    ModelPathFromFolder("parasol"),
+    ModelPathFromFolder("sword"),
+    ModelPathFromFolder("frog"),
 };
 
 #define HexToRGBV3(Hex) \
@@ -408,18 +419,6 @@ ResetApp(app_state *App)
     App->Animate = false;
 }
 
-internal void
-gl_Cleanup(gl_render_data *Render)
-{    
-    glDeleteBuffers(ArrayCount(Render->VBO), &Render->VBO[0]);
-    glDeleteVertexArrays(1, &Render->VAO);
-    glDeleteTextures(ArrayCount(Render->Tex), &Render->Tex[0]);
-    glDeleteProgram(Render->ModelShader);
-    glDeleteProgram(Render->TextShader);
-    glDeleteProgram(Render->ButtonShader);
-    OS_ProfileAndPrint("GL Cleanup");
-}
-
 str8 FormatText(arena *Arena, char *Format, ...)
 {
     str8 Result = {};
@@ -463,6 +462,9 @@ AddButton(app_input *Input, v2 BufferDim,
     Hovered = InBounds(Pos, Min, Max);;
     Clicked = (Hovered && Input->Buttons[PlatformButton_Left].EndedDown);
     
+    Button->Hovered = Hovered;
+    Button->Clicked = Clicked;
+    
     return Clicked;
 }
 
@@ -474,22 +476,35 @@ DrawButton(arena *Arena, v2 BufferDim, app_offscreen_buffer *TextImage,
            v2 *Minima,
            v2 *Maxima,
            f32 *Radii,
-           v2 Min, v2 Max, f32 Radius, str8 Text)
+           button *Button)
 {
-    v3 Color = {HexToRGBV3(Color_Button)};
+    v3 Color = {};
+    if(0) {}
+    else if(Button->Clicked)
+    {
+        Color = {HexToRGBV3(Color_ButtonPressed)};
+    }
+    else if(Button->Hovered)
+    {
+        Color = {HexToRGBV3(Color_ButtonHovered)};
+    }
+    else
+    {
+        Color = {HexToRGBV3(Color_Button)};
+    }
     
     // Draw button background
     {    
         // TODO(luca): Use one big buffer
         
-        v2 ClipMin = V2MulV2(V2AddF32(V2MulF32(Min, 2.0f), -1.0f), V2(1.0f, -1.0f));
-        v2 ClipMax = V2MulV2(V2AddF32(V2MulF32(Max, 2.0f), -1.0f), V2(1.0f, -1.0f));
+        v2 ClipMin = V2MulV2(V2AddF32(V2MulF32(Button->Min, 2.0f), -1.0f), V2(1.0f, -1.0f));
+        v2 ClipMax = V2MulV2(V2AddF32(V2MulF32(Button->Max, 2.0f), -1.0f), V2(1.0f, -1.0f));
         
         MakeQuadV3(Vertices, ClipMin, ClipMax, -1.0f);
         SetProvokingV3(Colors, Color);
-        SetProvokingV2(Minima, Min);
-        SetProvokingV2(Maxima, Max);
-        SetProvokingF32(Radii, Radius);
+        SetProvokingV2(Minima, Button->Min);
+        SetProvokingV2(Maxima, Button->Max);
+        SetProvokingF32(Radii, Button->Radius);
     }
     
     // Draw the text
@@ -499,8 +514,13 @@ DrawButton(arena *Arena, v2 BufferDim, app_offscreen_buffer *TextImage,
         f32 FontScale = stbtt_ScaleForPixelHeight(&Font->Info, HeightPx);
         f32 Baseline = rlf_GetBaseLine(Font, FontScale);
         
-        f32 X = (Min.X * (f32)TextImage->Width);
-        f32 Y = (Min.Y * (f32)TextImage->Height);
+        
+        str8 Text = FormatText(Arena, " " S8Fmt, S8Arg(Button->Text));
+        if(Text.Size > 6) Text.Size = 6;
+        
+        
+        f32 X = (Button->Min.X * (f32)TextImage->Width);
+        f32 Y = (Button->Min.Y * (f32)TextImage->Height);
         rlf_DrawText(Arena, TextImage, Font, 
                      HeightPx, Text, {X, Y + Baseline}, Color_ButtonText, false);
     }
@@ -545,6 +565,23 @@ gl_Init(arena *Arena, app_memory *Memory, gl_render_data *Render)
     glGenBuffers(ArrayCount(Render->VBO), &Render->VBO[0]);
     
     gl_InitShaders(Arena, Memory, Render);
+}
+
+internal void
+gl_CleanupShaders(gl_render_data *Render)
+{
+    glDeleteProgram(Render->ModelShader);
+    glDeleteProgram(Render->TextShader);
+    glDeleteProgram(Render->ButtonShader);
+}
+
+internal void
+gl_Cleanup(gl_render_data *Render)
+{    
+    glDeleteBuffers(ArrayCount(Render->VBO), &Render->VBO[0]);
+    glDeleteVertexArrays(1, &Render->VAO);
+    glDeleteTextures(ArrayCount(Render->Tex), &Render->Tex[0]);
+    gl_CleanupShaders(Render);
 }
 
 C_LINKAGE 
@@ -805,38 +842,42 @@ UPDATE_AND_RENDER(UpdateAndRender)
     f32 ButtonCornerRadius = 0.25f;
     v2 BufferDim = V2S32(Buffer->Width, Buffer->Height);
     
-    if(AddButton(Input, BufferDim,
-                 &ButtonsCount, Buttons, ButtonMin, ButtonDim, ButtonPadY, ButtonCornerRadius, 
-                 S8("Press")))
-    {
-        ResetApp(App);
-    }
-    
-    for EachElement(Idx, Models)
-    {
-        if(AddButton(Input, BufferDim,
-                     &ButtonsCount, Buttons, ButtonMin, ButtonDim, ButtonPadY, ButtonCornerRadius, Models[Idx].Name))
-        {
-            App->SelectedModelIdx = (s32)Idx;
-        }
-    }
-    
-    // TODO(luca): Proper assets/texture loading.
-    int Width, Height, Components;
-    char *ImagePath = PathFromExe(FrameArena, Memory, SelectedModel->Texture);
-    u8 *Image = stbi_load(ImagePath, &Width, &Height, &Components, 0);
-    
-    app_offscreen_buffer TextImage = {};
-    s32 ButtonVerticesCount = 6*ButtonsCount;
-    v3 *ButtonVertices = PushArray(FrameArena, v3, ButtonVerticesCount);
-    v3 *ButtonColors = PushArray(FrameArena, v3, ButtonVerticesCount);
-    v2 *ButtonMinima = PushArray(FrameArena, v2, ButtonVerticesCount);
-    v2 *ButtonMaxima = PushArray(FrameArena, v2, ButtonVerticesCount);
-    f32 *ButtonRadii = PushArray(FrameArena, f32, ButtonVerticesCount);
-    
-    // Create UI
+    // UI Create
     {    
-        // NOTE(luca): For software rasterization
+        if(AddButton(Input, BufferDim,
+                     &ButtonsCount, Buttons, ButtonMin, ButtonDim, ButtonPadY, ButtonCornerRadius, 
+                     S8("Press")))
+        {
+            ResetApp(App);
+        }
+        
+        for EachElement(Idx, Models)
+        {
+            if(AddButton(Input, BufferDim,
+                         &ButtonsCount, Buttons, ButtonMin, ButtonDim, ButtonPadY, ButtonCornerRadius, Models[Idx].Name))
+            {
+                App->SelectedModelIdx = (s32)Idx;
+            }
+        }
+        OS_ProfileAndPrint("UI Create");
+    }
+    
+    // Rendering
+    {
+        // TODO(luca): Proper assets/texture loading.
+        int Width, Height, Components;
+        char *ImagePath = PathFromExe(FrameArena, Memory, SelectedModel->Texture);
+        
+        u8 *Image = stbi_load(ImagePath, &Width, &Height, &Components, 0);
+        
+        s32 ButtonVerticesCount = 6*ButtonsCount;
+        v3 *ButtonVertices = PushArray(FrameArena, v3, ButtonVerticesCount);
+        v3 *ButtonColors = PushArray(FrameArena, v3, ButtonVerticesCount);
+        v2 *ButtonMinima = PushArray(FrameArena, v2, ButtonVerticesCount);
+        v2 *ButtonMaxima = PushArray(FrameArena, v2, ButtonVerticesCount);
+        f32 *ButtonRadii = PushArray(FrameArena, f32, ButtonVerticesCount);
+        
+        app_offscreen_buffer TextImage = {};
         TextImage.Width = 960;
         TextImage.Height = 960;
         TextImage.BytesPerPixel = 4;
@@ -845,35 +886,33 @@ UPDATE_AND_RENDER(UpdateAndRender)
         TextImage.Pixels = PushArray(FrameArena, u8, Size);
         MemorySet(TextImage.Pixels, 0, Size);
         
-        // Add Buttons
-        {        
-            // Models button list
-            v2 Min = {0.03f, 0.31f};
-            for EachIndex(Idx, ButtonsCount)
-            {
-                button *Button = Buttons + Idx;
-                
-                str8 Text = FormatText(FrameArena, " %s", Button->Text);
-                if(Text.Size > 6) Text.Size = 6;
-                
-                umm OffsetIdx = Idx*6;
-                DrawButton(FrameArena, BufferDim, &TextImage, Input, &App->Font,
-                           ButtonVertices + OffsetIdx,
-                           ButtonColors + OffsetIdx,
-                           ButtonMinima + OffsetIdx,
-                           ButtonMaxima + OffsetIdx,
-                           ButtonRadii + OffsetIdx,
-                           Button->Min, Button->Max, Button->Radius, Button->Text);
-                Min.Y += 0.06f;
-            }
+        OS_ProfileAndPrint("Rendering setup");
+        
+        // Draw UI
+        {    
+            // NOTE(luca): For software rasterization
             
-            OS_ProfileAndPrint("Add buttons");
+            // Render buttons
+            {        
+                for EachIndex(Idx, ButtonsCount)
+                {
+                    button *Button = Buttons + Idx;
+                    
+                    umm OffsetIdx = Idx*6;
+                    DrawButton(FrameArena, BufferDim, &TextImage, Input, &App->Font,
+                               ButtonVertices + OffsetIdx,
+                               ButtonColors + OffsetIdx,
+                               ButtonMinima + OffsetIdx,
+                               ButtonMaxima + OffsetIdx,
+                               ButtonRadii + OffsetIdx,
+                               Button);
+                }
+                
+                OS_ProfileAndPrint("Draw buttons");
+            }
         }
-    }
-    
-    // Rendering
-    {  
-#if 0 && RL_SLOW
+        
+#if EX_HOT_RELOAD_SHADERS
         gl_InitShaders(FrameArena, Memory, &App->Render);
 #endif
         
@@ -958,6 +997,13 @@ UPDATE_AND_RENDER(UpdateAndRender)
             
             OS_ProfileAndPrint("GL Draw UI");
         }
+        
+        stbi_image_free(Image);
+        
+#if EX_HOT_RELOAD_SHADERS
+        gl_CleanupShaders(Render);
+#endif
+        
     }
     
     

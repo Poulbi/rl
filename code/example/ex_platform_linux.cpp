@@ -766,7 +766,7 @@ P_LoadAppCode(arena *Arena, app_code *Code, app_memory *Memory, s64 *LastWriteTi
     {
         *LastWriteTime = CurrentWriteTime;
         
-        if(Library)
+        if(Library && Code->Loaded)
         {
             dlclose(Library);
         }
@@ -801,4 +801,3 @@ P_LoadAppCode(arena *Arena, app_code *Code, app_memory *Memory, s64 *LastWriteTi
         Code->UpdateAndRender = UpdateAndRenderStub;
     }
 }
-

@@ -17,7 +17,7 @@ out v2 TexCoord;
 
 f32 deg2rad(f32 degrees)
 {
-    f32 Result = degrees*3.14159265359f/180.0f;
+    f32 Result = degrees*3.14159265359f/180.0;
     return Result;
 }
 
@@ -51,7 +51,7 @@ void main()
     f32 depth = z + offset.z;
     gl_Position = v4(x, y, z, depth);
 #else
-    gl_Position = v4(pos, 1.0f);
+    gl_Position = v4(pos, 1.0);
 #endif
     
 }

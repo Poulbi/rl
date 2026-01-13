@@ -13,5 +13,5 @@ out v2 TexCoord;
 void main()
 {
     TexCoord = tex;
-    gl_Position = v4(pos, 1.0f);
+    gl_Position = v4(pos, 1.0);
 }

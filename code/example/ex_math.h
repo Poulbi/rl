@@ -83,8 +83,10 @@ InBounds(v2 A, v2 Min, v2 Max)
     return Result;
 }
 
+// TODO(luca): Metadesk
 #define SetProvokingFunc(FuncName, type) \
 internal inline void FuncName(type Quad[6], type Value) { Quad[2] = Value; Quad[5] = Value; }
+SetProvokingFunc(SetProvokingV4, v4)
 SetProvokingFunc(SetProvokingV3, v3)
 SetProvokingFunc(SetProvokingV2, v2)
 SetProvokingFunc(SetProvokingF32, f32)
@@ -111,5 +113,7 @@ MakeQuadV3(v3 Quad[6], v2 Min, v2 Max, f32 Z)
     Quad[5] = {Max.X, Min.Y, 0.0f}; // BR
     for EachIndex(Idx, 6) Quad[Idx].Z = Z;
 }
+
+
 
 #endif //EX_MATH_H
