@@ -9,55 +9,51 @@
 #define New(type, Name, Array, Count) type *Name = Array + Count; Count += 1;
 
 //~ Constants
-
-// AA BB GG RR
-
-#define HexToRGBV3(Hex) \
+#define U32ToV3Arg(Hex) \
 ((f32)((Hex >> 8*2) & 0xFF)/255.0f), \
 ((f32)((Hex >> 8*1) & 0xFF)/255.0f), \
 ((f32)((Hex >> 8*0) & 0xFF)/255.0f)
 
-#define V3Arg(Value) Value.X, Value.Y, Value.Z
-
 #define ColorList \
-COLOR(Text,          0xff87bfcf); \
-COLOR(Point,         0xFF00FFFF); \
-COLOR(Cursor,        0xFFFF0000); \
-COLOR(Button,        0xFF0172AD); \
-COLOR(ButtonHovered, 0xFF017FC0); \
-COLOR(ButtonPressed, 0xFF0987C8); \
-COLOR(ButtonText,    0xFFFBFDFE); \
-COLOR(Background,    0xFF13171F); \
-COLOR(BackgroundSecond, 0xFF3A4151); \
-COLOR(Red,           0xFFBF616A); \
-COLOR(Green,         0xFFA3BE8C); \
-COLOR(Orange,        0xFFD08770); \
-COLOR(Magenta,       0xFFB48EAD); \
-COLOR(Yellow,        0xFFEBCB8B);
+SET(Text,             0xff87bfcf) \
+SET(Point,            0xff00ffff) \
+SET(Cursor,           0xffff0000) \
+SET(Button,           0xff0172ad) \
+SET(ButtonHovered,    0xff017fc0) \
+SET(ButtonPressed,    0xff0987c8) \
+SET(ButtonText,       0xfffbfdfe) \
+SET(Background,       0xff13171f) \
+SET(BackgroundSecond, 0xff3a4151) \
+SET(Red,              0xffbf616a) \
+SET(Green,            0xffa3be8c) \
+SET(Orange,           0xffd08770) \
+SET(Magenta,          0xffb48ead) \
+SET(Yellow,           0xffebcb8b)
 
-#define COLOR(Name, Value) u32 ColorU32_##Name = Value; 
+#define SET(Name, Value) u32 ColorU32_##Name = Value; 
 ColorList
-#undef COLOR
+#undef SET
 
-#define COLOR(Name, Value) v3 Color_##Name = {HexToRGBV3(Value)};
+#define SET(Name, Value) v3 Color_##Name = {U32ToV3Arg(Value)};
 ColorList
-#undef COLOR
+#undef SET
 
-#define Strs_CodePath                 ".." SLASH "code" SLASH "example" SLASH 
-#define Strs_DataPath                 ".." SLASH "data" SLASH 
-#define Strs_FragmentShaderPath       Strs_CodePath "frag.glsl" 
-#define Strs_VertexShaderPath         Strs_CodePath "vert.glsl"
-#define Strs_TextVertexShaderPath     Strs_CodePath "vert_text.glsl"
-#define Strs_TextFragmentShaderPath   Strs_CodePath "frag_text.glsl"
-#define Strs_ButtonVertexShaderPath   Strs_CodePath "vert_button.glsl"
-#define Strs_ButtonFragmentShaderPath Strs_CodePath "frag_button.glsl"
-#define Strs_ModelsPath               Strs_DataPath "models" SLASH
+#define Path_Code                 ".." SLASH "code" SLASH "example" SLASH 
+#define Path_Data                 ".." SLASH "data" SLASH 
+#define Path_Font                 Path_Data "font.ttf" 
+#define Path_FragmentShader       Path_Code "frag.glsl" 
+#define Path_VertexShader         Path_Code "vert.glsl"
+#define Path_TextVertexShader     Path_Code "vert_text.glsl"
+#define Path_TextFragmentShader   Path_Code "frag_text.glsl"
+#define Path_ButtonVertexShader   Path_Code "vert_button.glsl"
+#define Path_ButtonFragmentShader Path_Code "frag_button.glsl"
+#define Path_Models               Path_Data "models" SLASH
 
 #define ModelPathFromFolder(Folder) \
 { \
 S8(Folder), \
-S8(Strs_ModelsPath Folder SLASH "model.obj"), \
-S8(Strs_ModelsPath Folder SLASH "texture.png") \
+S8(Path_Models Folder SLASH "model.obj"), \
+S8(Path_Models Folder SLASH "texture.png") \
 }
 
 global_variable model_path Models[] = 
@@ -482,6 +478,8 @@ AddButton(app_input *Input, v2 BufferDim,
     {    
         b32 Hovered = InBounds(Pos, Min, Max);
         
+        // TODO(luca): Parameterize clicking behaviour.
+#if 0        
         // NOTE(luca): If mouse released and hovered then the button is considered clicked
         Clicked = (Button->Pressed && Hovered && !ButtonLeft.EndedDown);
         
@@ -493,14 +491,21 @@ AddButton(app_input *Input, v2 BufferDim,
         
         // NOTE(luca): Only hover when mouse button is up
         Button->Hovered = (Hovered && !ButtonLeft.EndedDown);
+#else
+        Button->Hovered = (Hovered && !ButtonLeft.EndedDown);
+        
+        // NOTE(luca): Only triggers if this is the first click 
+        Clicked = (Hovered && WasPressed(ButtonLeft));
+        
+        Button->Pressed = (Hovered && ButtonLeft.EndedDown);
+#endif
     }
     
     return Clicked;
 }
 
 internal void
-DrawButton(arena *Arena, v2 BufferDim, app_offscreen_buffer *TextImage, 
-           app_input *Input, app_font *Font, 
+DrawButton(arena *Arena, v2 BufferDim, app_offscreen_buffer *TextImage,  app_font *Font, 
            v3 *Vertices,
            v3 *Colors,
            v2 *Minima,
@@ -545,10 +550,8 @@ DrawButton(arena *Arena, v2 BufferDim, app_offscreen_buffer *TextImage,
         f32 FontScale = stbtt_ScaleForPixelHeight(&Font->Info, HeightPx);
         f32 Baseline = rlf_GetBaseLine(Font, FontScale);
         
-        
         str8 Text = FormatText(Arena, " " S8Fmt, S8Arg(Button->Text));
         if(Text.Size > 6) Text.Size = 6;
-        
         
         f32 X = (Button->Min.X * (f32)TextImage->Width);
         f32 Y = (Button->Min.Y * (f32)TextImage->Height);
@@ -569,13 +572,13 @@ internal void
 gl_InitShaders(arena *Arena, app_memory *Memory, gl_render_data *Render)
 {
     Render->ModelShader = gl_ProgramFromShaders(Arena, Memory, 
-                                                S8(Strs_VertexShaderPath),
-                                                S8(Strs_FragmentShaderPath));
+                                                S8(Path_VertexShader),
+                                                S8(Path_FragmentShader));
     Render->ButtonShader = gl_ProgramFromShaders(Arena, Memory,
-                                                 S8(Strs_ButtonVertexShaderPath), S8(Strs_ButtonFragmentShaderPath));
+                                                 S8(Path_ButtonVertexShader), S8(Path_ButtonFragmentShader));
     Render->TextShader = gl_ProgramFromShaders(Arena, Memory, 
-                                               S8(Strs_TextVertexShaderPath),
-                                               S8(Strs_TextFragmentShaderPath));
+                                               S8(Path_TextVertexShader),
+                                               S8(Path_TextFragmentShader));
     
 }
 
@@ -647,7 +650,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
             
             ResetApp(App);
             
-            char *FontPath = PathFromExe(FrameArena, Memory, S8("../data/font.ttf"));
+            char *FontPath = PathFromExe(FrameArena, Memory, S8(Path_Font));
             rlf_InitFont(&App->Font, FontPath);
             
             // GL Setup
@@ -716,7 +719,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
     
     if(App->Animate)
     {
-        App->Angle.X += Input->dtForFrame*2.0f;
+        App->Angle.X += Input->dtForFrame;
     }
     
     App->Angle.X -= 2.0f*!!(App->Angle.X > 2.0f);
@@ -901,13 +904,14 @@ UPDATE_AND_RENDER(UpdateAndRender)
         
         u8 *Image = stbi_load(ImagePath, &Width, &Height, &Components, 0);
         
-        s32 ButtonVerticesCount = 6*ButtonsCount;
+        s32 ButtonVerticesCount = 6*(ButtonsCount + 1);
         v3 *ButtonVertices = PushArray(FrameArena, v3, ButtonVerticesCount);
         v3 *ButtonColors = PushArray(FrameArena, v3, ButtonVerticesCount);
         v2 *ButtonMinima = PushArray(FrameArena, v2, ButtonVerticesCount);
         v2 *ButtonMaxima = PushArray(FrameArena, v2, ButtonVerticesCount);
         f32 *ButtonRadii = PushArray(FrameArena, f32, ButtonVerticesCount);
         
+        // NOTE(luca): For software rasterization
         app_offscreen_buffer TextImage = {};
         TextImage.Width = 960;
         TextImage.Height = 960;
@@ -921,7 +925,28 @@ UPDATE_AND_RENDER(UpdateAndRender)
         
         // Draw UI
         {    
-            // NOTE(luca): For software rasterization
+            // Background for buttons
+            {
+                v3 Color = {U32ToV3Arg(0xFF5E81AC)};
+                
+                v2 Min = {ButtonMin.X - 0.01f, ButtonMin.Y - 0.01f};
+                v2 Max = {ButtonMin.X + ButtonDim.X + 0.01f, 1.0f};
+                v2 ClipMin = V2MulV2(V2AddF32(V2MulF32(Min, 2.0f), -1.0f), V2(1.0f, -1.0f));
+                v2 ClipMax = V2MulV2(V2AddF32(V2MulF32(Max, 2.0f), -1.0f), V2(1.0f, -1.0f));
+                
+                umm OffsetIdx = 0*6;
+                v3 *Vertices = ButtonVertices + OffsetIdx;
+                v3 *Colors = ButtonColors + OffsetIdx;
+                v2 *Minima = ButtonMinima + OffsetIdx;
+                v2 *Maxima = ButtonMaxima + OffsetIdx;
+                f32 *Radii = ButtonRadii + OffsetIdx;
+                
+                MakeQuadV3(Vertices, ClipMin, ClipMax, -1.0f);
+                SetProvokingV3(Colors, Color);
+                SetProvokingV2(Minima, Min);
+                SetProvokingV2(Maxima, Max);
+                SetProvokingF32(Radii, 0.0f);
+            }
             
             // Render buttons
             {        
@@ -929,8 +954,8 @@ UPDATE_AND_RENDER(UpdateAndRender)
                 {
                     button *Button = Buttons + Idx;
                     
-                    umm OffsetIdx = Idx*6;
-                    DrawButton(FrameArena, BufferDim, &TextImage, Input, &App->Font,
+                    umm OffsetIdx = (Idx + 1)*6;
+                    DrawButton(FrameArena, BufferDim, &TextImage, &App->Font,
                                ButtonVertices + OffsetIdx,
                                ButtonColors + OffsetIdx,
                                ButtonMinima + OffsetIdx,
@@ -941,6 +966,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
                 
                 OS_ProfileAndPrint("Draw buttons");
             }
+            
         }
         
 #if EX_HOT_RELOAD_SHADERS
@@ -988,7 +1014,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
         {
             // Buttons
             {            
-                s32 Count = 6*ButtonsCount;
+                s32 Count = ButtonVerticesCount;
                 glUseProgram(Render->ButtonShader);
                 
                 gl_LoadFloatsIntoBuffer(Render->VBO[0], Render->ButtonShader, "pos", Count, 3, ButtonVertices);
@@ -1004,7 +1030,6 @@ UPDATE_AND_RENDER(UpdateAndRender)
                 glDrawArrays(GL_TRIANGLES, 0, Count);
             }
             
-            local_persist b32 Once = false;
             // Text
             {
                 s32 Count = 6;

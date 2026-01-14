@@ -14,15 +14,26 @@ Example App
   - Instead of passing one quad for the buffer we could pass smaller quads with the written to
     regions, this could be inferred from the vertices set up in Buttons.
     Therefore, we can probably merge those shaders into one draw call.
+- Use only one buffer for rendering quads
+#pragma pack(push, 1)
+typedef struct gl_render_quad_data gl_render_quad_data;
+struct gl_render_quad_data
+{
+    v3 Vertex;
+    v3 Color;
+    v2 Min, Max;
+    f32 Radius;
+};
+#pragma pack(pop)
 
 Misc
 - metadesk for build targets
 - hot reloading for asset files in debug mode
-		- store hash of asset file + last write time
-				if last_write_time != last_modified
-					if old_hash != hash
-						reload file
-					last_write_time = last_modified
+  - store hash of asset file + last write time
+      if last_write_time != last_modified
+        if old_hash != hash
+          reload file
+        last_write_time = last_modified
 
 Base
 - tag calls with callstack

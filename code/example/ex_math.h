@@ -84,12 +84,21 @@ InBounds(v2 A, v2 Min, v2 Max)
 }
 
 // TODO(luca): Metadesk
-#define SetProvokingFunc(FuncName, type) \
-internal inline void FuncName(type Quad[6], type Value) { Quad[2] = Value; Quad[5] = Value; }
-SetProvokingFunc(SetProvokingV4, v4)
-SetProvokingFunc(SetProvokingV3, v3)
-SetProvokingFunc(SetProvokingV2, v2)
-SetProvokingFunc(SetProvokingF32, f32)
+
+#define ProvokingFuncs \
+SET(V4, v4) \
+SET(V3, v3) \
+SET(V2, v2) \
+SET(F32, f32)
+
+#define SET(Name, type) \
+internal inline void \
+SetProvoking##Name(type Quad[6], type Value) \
+{ \
+Quad[2] = Value; Quad[5] = Value; \
+}
+ProvokingFuncs
+#undef SET
 
 internal inline void
 MakeQuadV2(v2 Quad[6], v2 Min, v2 Max)
@@ -105,13 +114,12 @@ MakeQuadV2(v2 Quad[6], v2 Min, v2 Max)
 internal inline void
 MakeQuadV3(v3 Quad[6], v2 Min, v2 Max, f32 Z)
 {
-    Quad[0] = {Min.X, Min.Y, 0.0f}; // BL
-    Quad[1] = {Max.X, Min.Y, 0.0f}; // BR
-    Quad[2] = {Min.X, Max.Y, 0.0f}; // TL
-    Quad[3] = {Min.X, Max.Y, 0.0f}; // TL
-    Quad[4] = {Max.X, Max.Y, 0.0f}; // TR
-    Quad[5] = {Max.X, Min.Y, 0.0f}; // BR
-    for EachIndex(Idx, 6) Quad[Idx].Z = Z;
+    Quad[0] = {Min.X, Min.Y, Z}; // BL
+    Quad[1] = {Max.X, Min.Y, Z}; // BR
+    Quad[2] = {Min.X, Max.Y, Z}; // TL
+    Quad[3] = {Min.X, Max.Y, Z}; // TL
+    Quad[4] = {Max.X, Max.Y, Z}; // TR
+    Quad[5] = {Max.X, Min.Y, Z}; // BR
 }
 
 
