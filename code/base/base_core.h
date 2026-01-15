@@ -102,10 +102,12 @@ Swap(type& A, type& B) { type T = A; A = B; B = T; }
 # define SLASH "\\"
 #endif
 
-#if OS_LINUX
+#if (COMPILER_CLANG || COMPILER_GNU)
 # define Trap() __builtin_trap();
-#elif OS_WINDOWS
+#elif COMPILER_MSVC
 # define Trap() __debugbreak();
+#else
+# define Trap() *(int *)0 = 0;
 #endif
 
 #if COMPILER_MSVC
