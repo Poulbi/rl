@@ -1,9 +1,8 @@
-#define BASE_NO_ENTRYPOINT 1
+#define RL_BASE_NO_ENTRYPOINT 1
 #include "base/base.h"
 #include "base/base.c"
-#include "ex_platform.h"
-
-#include "rl_libs.h"
+#include "../ex_platform.h"
+#include "../ex_libs.h"
 
 typedef struct vertex vertex;
 struct vertex
@@ -23,6 +22,14 @@ struct tex_coord
 typedef vertex normal;
 
 typedef s32 face[4][3];
+
+
+typedef struct app_state app_state;
+struct app_state
+{
+    random_series Series;
+    f32 XOffset;
+};
 
 #define New(type, Name, Array, Count) type *Name = Array + Count; Count += 1;
 
@@ -113,31 +120,38 @@ UPDATE_AND_RENDER(UpdateAndRender)
     ThreadContextSelect(Context);
     
 #if RL_INTERNAL    
-    GlobalDebuggerIsAttached = App->DebuggerAttached;
+    GlobalDebuggerIsAttached = Memory->IsDebuggerAttached;
 #endif
     
     local_persist s32 GLADVersion = 0;
     // Init
     {    
-        if(App->Initialized && App->Reloaded)
+        if(Memory->Initialized && Memory->Reloaded)
         {
             GLADVersion = gladLoaderLoadGL();
-            App->Reloaded = false;
+            Memory->Reloaded = false;
         }
         
-        if(!App->Initialized)
+        if(!Memory->Initialized)
         {
+            Memory->AppState = PushStruct(PermanentArena, app_state);
+            
+            app_state *App = (app_state *)Memory->AppState;
+            
             RandomSeed(&App->Series, 0);
             GLADVersion = gladLoaderLoadGL();
             
-            App->Initialized = true;
+            Memory->Initialized = true;
         }
+        
         
 #if !RL_INTERNAL    
         GLADDisableCallbacks();
 #endif
     }
     OS_ProfileAndPrint("Init");
+    
+    app_state *App = (app_state *)Memory->AppState;
     
     local_persist b32 Animate = false;
     
@@ -254,7 +268,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
                 local_persist int Width, Height, Components;
                 local_persist u8 *Image = 0;
                 
-                char *ImagePath = PathFromExe(FrameArena, S8("./data/sample.png"));
+                char *ImagePath = PathFromExe(FrameArena, Memory->ExeDirPath, S8("./data/sample.png"));
                 if(!Image) Image = stbi_load(ImagePath, &Width, &Height, &Components, 0);
                 
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Image);

@@ -1,10 +1,9 @@
-#define BASE_NO_ENTRYPOINT 1
+#define RL_BASE_NO_ENTRYPOINT 1
 #include "base/base.h"
 #include "ex_platform.h"
 #include "ex_math.h"
 #include "ex_app.h"
-
-#include "rl_libs.h"
+#include "ex_libs.h"
 
 #include "base/base.c"
 
@@ -118,11 +117,11 @@ gl_ErrorStatus(gl_handle Handle, b32 IsShader)
 }
 
 internal gl_handle
-gl_CompileShaderFromSource(arena *Arena, app_memory *Memory, str8 FileNameAfterExe, s32 Type)
+gl_CompileShaderFromSource(arena *Arena, str8 ExeDirPath, str8 FileNameAfterExe, s32 Type)
 {
     gl_handle Handle = glCreateShader(Type);
     
-    char *FileName = PathFromExe(Arena, Memory, FileNameAfterExe);
+    char *FileName = PathFromExe(Arena, ExeDirPath, FileNameAfterExe);
     str8 Source = OS_ReadEntireFileIntoMemory(FileName);
     
     if(Source.Size)
@@ -138,13 +137,13 @@ gl_CompileShaderFromSource(arena *Arena, app_memory *Memory, str8 FileNameAfterE
 }
 
 internal gl_handle
-gl_ProgramFromShaders(arena *Arena, app_memory *Memory, str8 VertPath, str8 FragPath)
+gl_ProgramFromShaders(arena *Arena, str8 ExeDirPath, str8 VertPath, str8 FragPath)
 {
     gl_handle Program = 0;
     
     gl_handle VertexShader, FragmentShader;
-    VertexShader = gl_CompileShaderFromSource(Arena, Memory, VertPath, GL_VERTEX_SHADER);
-    FragmentShader = gl_CompileShaderFromSource(Arena, Memory, FragPath, GL_FRAGMENT_SHADER);
+    VertexShader = gl_CompileShaderFromSource(Arena, ExeDirPath, VertPath, GL_VERTEX_SHADER);
+    FragmentShader = gl_CompileShaderFromSource(Arena, ExeDirPath, FragPath, GL_FRAGMENT_SHADER);
     
     Program = glCreateProgram();
     glAttachShader(Program, VertexShader);
@@ -571,14 +570,14 @@ CycleS32(s32 *Value, s32 Max, s32 Increment)
 }
 
 internal void
-gl_InitShaders(arena *Arena, app_memory *Memory, gl_render_data *Render)
+gl_InitShaders(arena *Arena, str8 ExeDirPath, gl_render_data *Render)
 {
-    Render->ModelShader = gl_ProgramFromShaders(Arena, Memory, 
+    Render->ModelShader = gl_ProgramFromShaders(Arena, ExeDirPath, 
                                                 S8(Path_VertexShader),
                                                 S8(Path_FragmentShader));
-    Render->ButtonShader = gl_ProgramFromShaders(Arena, Memory,
+    Render->ButtonShader = gl_ProgramFromShaders(Arena, ExeDirPath,
                                                  S8(Path_ButtonVertexShader), S8(Path_ButtonFragmentShader));
-    Render->TextShader = gl_ProgramFromShaders(Arena, Memory, 
+    Render->TextShader = gl_ProgramFromShaders(Arena, ExeDirPath, 
                                                S8(Path_TextVertexShader),
                                                S8(Path_TextFragmentShader));
     
@@ -600,7 +599,7 @@ gl_Init(arena *Arena, app_memory *Memory, gl_render_data *Render)
     glGenTextures(ArrayCount(Render->Tex), &Render->Tex[0]);
     glGenBuffers(ArrayCount(Render->VBO), &Render->VBO[0]);
     
-    gl_InitShaders(Arena, Memory, Render);
+    gl_InitShaders(Arena, Memory->ExeDirPath, Render);
 }
 
 internal void
@@ -652,7 +651,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
             
             ResetApp(App);
             
-            char *FontPath = PathFromExe(FrameArena, Memory, S8(Path_Font));
+            char *FontPath = PathFromExe(FrameArena, Memory->ExeDirPath, S8(Path_Font));
             rlf_InitFont(&App->Font, FontPath);
             
             // GL Setup
@@ -738,7 +737,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
     
     // Read obj file
     {    
-        char *FileName = PathFromExe(FrameArena, Memory, SelectedModel->Model);
+        char *FileName = PathFromExe(FrameArena, Memory->ExeDirPath, SelectedModel->Model);
         str8 In = OS_ReadEntireFileIntoMemory(FileName);
         
         s32 InVerticesCount = 0;
@@ -902,7 +901,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
     {
         // TODO(luca): Proper assets/texture loading.
         int Width, Height, Components;
-        char *ImagePath = PathFromExe(FrameArena, Memory, SelectedModel->Texture);
+        char *ImagePath = PathFromExe(FrameArena, Memory->ExeDirPath, SelectedModel->Texture);
         
         u8 *Image = stbi_load(ImagePath, &Width, &Height, &Components, 0);
         
@@ -972,7 +971,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
         }
         
 #if EX_HOT_RELOAD_SHADERS
-        gl_InitShaders(FrameArena, Memory, &App->Render);
+        gl_InitShaders(FrameArena, Memory->ExeDirPath, &App->Render);
 #endif
         
         gl_render_data *Render = &App->Render;

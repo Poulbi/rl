@@ -1,6 +1,8 @@
 #ifndef RL_LIBS_H
 #define RL_LIBS_H
 
+#include "base/base_core.h"
+
 #if EX_SLOW_COMPILE
 C_LINKAGE_BEGIN
 # define GLAD_GL_IMPLEMENTATION

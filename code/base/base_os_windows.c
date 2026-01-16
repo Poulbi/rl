@@ -195,12 +195,12 @@ OS_Sleep(u32 MicroSeconds)
 internal void
 OS_ChangeDirectory(char *Path)
 {
- SetCurrentDirectory(Path);
+    SetCurrentDirectory(Path);
 	Win32LogIfError();
 }
 
 //~ Entrypoint
-#if !BASE_NO_ENTRYPOINT
+#if !RL_BASE_NO_ENTRYPOINT
 int CALLBACK
 WinMain(HINSTANCE Instance,
         HINSTANCE PrevInstance,

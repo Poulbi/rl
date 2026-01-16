@@ -15,6 +15,7 @@ debug=1
 release=0
 personal=0
 slow=0
+asan=0
 
 # Targets
 clean=0
@@ -109,15 +110,17 @@ C_Compile()
  Flags="${3:-}"
 
  # NOTE(luca): _GNU_SOURCE is only for C source files since it is enabled by default in c++.
- CommonCompilerFlags="-fsanitize-trap -nostdinc++ -fno-threadsafe-statics -I$ScriptDirectory -D_GNU_SOURCE=1"
+ CommonCompilerFlags="-nostdinc++ -fno-threadsafe-statics -I$ScriptDirectory -D_GNU_SOURCE=1"
  CommonWarningFlags="-Wall -Wextra -Wconversion -Wdouble-promotion -Wno-sign-conversion -Wno-sign-compare -Wno-double-promotion -Wno-unused-but-set-variable -Wno-unused-variable -Wno-write-strings -Wno-pointer-arith -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers"
  LinkerFlags="-lm -ldl -lpthread"
 
  DebugFlags="-g -ggdb -g3"
  ReleaseFlags="-O3"
 
- ClangFlags="-fsanitize=address -fno-omit-frame-pointer -fdiagnostics-absolute-paths -fsanitize-undefined-trap-on-error -ftime-trace
+ ClangFlags="-fno-omit-frame-pointer -fdiagnostics-absolute-paths -fsanitize-undefined-trap-on-error -ftime-trace
 -Wno-null-dereference -Wno-missing-braces -Wno-vla-extension -Wno-writable-strings   -Wno-address-of-temporary -Wno-int-to-void-pointer-cast -Wno-reorder-init-list -Wno-c99-designator"
+
+ [ "$asan" = 1 ] && ClangFlags="$ClangFlags -fsanitize-trap -fsanitize=address"
 
  GCCFlags="-Wno-cast-function-type -Wno-missing-field-initializers -Wno-int-to-pointer-cast"
 
@@ -183,30 +186,32 @@ fi
 
 AppCompile()
 {
- Dir="$1"
+ AppDir="./example"
+
+ Dir="${1:-}"
  ExtraFlags="${2:-}"
 
  AppFlags="-fPIC --shared" 
 
- LibsFile="../build/rl_libs.o"
+ LibsFile="../build/ex_libs.o"
 
  # Faster compilation times by compiling all libraries in a separate translation unit.
  if [ "$slow" = 0 ]
  then
   { [ ! -f "$LibsFile" ] || [ "$slow" = 1 ]; } &&
-   C_Compile "$Dir"/rl_libs.h "$LibsFile" "-fPIC -x c++ -c -DEX_SLOW_COMPILE=1 -Wno-unused-command-line-argument"
+   C_Compile "$AppDir"/ex_libs.h "$LibsFile" "-fPIC -x c++ -c -DEX_SLOW_COMPILE=1 -Wno-unused-command-line-argument"
   AppFlags="$AppFlags $LibsFile"
  fi
 
- C_Compile "$Dir"/ex_app.cpp ex_app.so "$AppFlags $ExtraFlags"
- C_Compile $(Strip $Dir/ex_platform.cpp) "-lX11 -lGL -lGLX $ExtraFlags"
+ C_Compile "$AppDir/${Dir}ex_app.cpp" ex_app.so "$AppFlags $ExtraFlags"
+ C_Compile $(Strip "$AppDir/ex_platform.cpp") "-lX11 -lGL -lGLX $ExtraFlags"
 }
 
 if [ "$example" = 1 ]
 then
- [ "$app"  = 1 ] && AppCompile ./example
- [ "$sort" = 1 ] && AppCompile ./example/sort "-DEX_FORCE_X11=1"
- [ "$gl"   = 1 ] && AppCompile ./example/gl
+ [ "$app"  = 1 ] && AppCompile
+ [ "$sort" = 1 ] && AppCompile sort/ "-DEX_FORCE_X11=1"
+ [ "$gl"   = 1 ] && AppCompile gl/
 	if [ "$windows" = 1 ]
 	then
 		printf 'call C:\BuildTools\devcmd.bat\ncall build.bat\n' | wine cmd.exe 2>/dev/null

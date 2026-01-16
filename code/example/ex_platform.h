@@ -193,11 +193,11 @@ CharPressed(app_input *Input, rune Codepoint, s32 Modifiers)
 }
 
 internal char *
-PathFromExe(arena *Arena, app_memory *Memory, str8 Path)
+PathFromExe(arena *Arena, str8 ExeDirPath, str8 Path)
 {
     char *Result = 0;
     
-    str8 Base = Memory->ExeDirPath;
+    str8 Base = ExeDirPath;
     umm Size = Base.Size + Path.Size + 1;
     
     Result = PushArray(Arena, char, Size);

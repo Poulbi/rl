@@ -1,15 +1,10 @@
-#define BASE_NO_ENTRYPOINT 1
+#define RL_BASE_NO_ENTRYPOINT 1
 #include "base/base.h"
-#include "ex_platform.h"
-
+#include "base/base.c"
+#include "../ex_platform.h"
 #include <math.h>
 
-#include "base/base.c"
-
 //~ Constants
-
-// AA BB GG RR
-
 #define ColorText          0xff87bfcf
 #define ColorButtonText    0xFFFBFDFE
 #define ColorPoint         0xFF00FFFF
@@ -20,6 +15,16 @@
 #define ColorButtonPressed 0xFF0987C8
 #define ColorBackground    0xFF13171F
 #define ColorMapBackground 0xFF3A4151
+
+//~ Types
+typedef struct app_state app_state;
+struct app_state
+{
+    arena *NumbersArena;
+    random_series Series; 
+};
+
+//~ Functions
 
 internal inline u32 *
 PixelFromBuffer(app_offscreen_buffer *Buffer, u32 X, u32 Y)
@@ -191,15 +196,18 @@ UPDATE_AND_RENDER(UpdateAndRender)
     ThreadContextSelect(Context);
     
 #if RL_INTERNAL    
-    GlobalDebuggerIsAttached = App->DebuggerAttached;
+    GlobalDebuggerIsAttached = Memory->IsDebuggerAttached;
 #endif
     
     u32 Max = 255;
     u32 NumbersCount = 10000;
     u32 *Numbers = 0;
     
-    if(!App->Initialized)
+    if(!Memory->Initialized)
     {
+        app_state *App = PushStruct(PermanentArena, app_state);
+        Memory->AppState = App; 
+        
         RandomSeed(&App->Series, 0);
         
         App->NumbersArena = ArenaAlloc();
@@ -210,8 +218,10 @@ UPDATE_AND_RENDER(UpdateAndRender)
             Numbers[Idx] = Value;
         }
         
-        App->Initialized = true;
+        Memory->Initialized = true;
     }
+    
+    app_state *App = (app_state *)Memory->AppState;
     
     Numbers = PushArray(App->NumbersArena, u32, 0);
     

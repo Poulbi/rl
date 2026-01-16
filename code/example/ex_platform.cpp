@@ -82,21 +82,20 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         
         s64 LastWriteTime = {};
 #if OS_LINUX        
-        Code.LibraryPath = PathFromExe(PermanentArena, &AppMemory, S8("ex_app.so"));
+        Code.LibraryPath = PathFromExe(PermanentArena, AppMemory.ExeDirPath, S8("ex_app.so"));
         void *LinuxLibraryHandle = 0;
         Code.LibraryHandle = (umm)LinuxLibraryHandle;
 #else
-        Code.LibraryPath = PathFromExe(PermanentArena, &AppMemory, S8("ex_app.dll"));
+        Code.LibraryPath = PathFromExe(PermanentArena, AppMemory.ExeDirPath, S8("ex_app.dll"));
         HMODULE Win32LibraryHandle = 0;
         Code.LibraryHandle = (umm)Win32LibraryHandle;
 #endif
         
         b32 Paused = false;
         
+        OS_ProfileInit("P");
         while(*Running)
         {
-            OS_ProfileInit("P");
-            
             umm CPUBackPos = BeginScratch(FrameArena);
             
             // Prepare  Input

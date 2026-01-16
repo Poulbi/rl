@@ -186,7 +186,7 @@ ENTRY_POINT(ThreadInitEntryPoint)
 {
     ThreadInit(&Params->Context);
     DEBUGThreadContext = ThreadContext;
-#if !BASE_NO_ENTRYPOINT
+#if !RL_BASE_NO_ENTRYPOINT
     EntryPoint(Params);
 #endif
     
@@ -331,7 +331,7 @@ LinuxMainEntryPoint(int ArgsCount, char **Args)
     
 }
 
-#if !BASE_NO_ENTRYPOINT
+#if !RL_BASE_NO_ENTRYPOINT
 int main(int ArgsCount, char **Args)
 {
     LinuxMainEntryPoint(ArgsCount, Args);
