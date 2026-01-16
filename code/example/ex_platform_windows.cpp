@@ -250,8 +250,8 @@ P_LoadAppCode(arena *Arena, app_code *Code, app_memory *Memory, s64 *LastWriteTi
 {
     HMODULE Library = (HMODULE)Code->LibraryHandle;
     
-    char *LockFileName = PathFromExe(Arena, Memory, S8("lock.tmp"));
-    char *TempDLLPath = PathFromExe(Arena, Memory, S8("ex_app_temp.dll"));
+    char *LockFileName = PathFromExe(Arena, Memory->ExeDirPath, S8("lock.tmp"));
+    char *TempDLLPath = PathFromExe(Arena, Memory->ExeDirPath, S8("ex_app_temp.dll"));
     
     WIN32_FILE_ATTRIBUTE_DATA Data;
     
