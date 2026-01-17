@@ -1,6 +1,6 @@
 /* date = December 21st 2025 0:25 pm */
 
-#ifndef BASE_STRINGS_H
+#if !defined(BASE_STRINGS_H)
 #define BASE_STRINGS_H
 
 typedef struct str8 str8;

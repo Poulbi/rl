@@ -24,17 +24,20 @@ hash=0
 nieuw=0
 samples=0
 cuversine=0
+
 example=0
 app=0
 sort=0
 gl=0
 windows=0
+droid=0
+
 cling=0
 rldroid=0
-Targets="hash/samples/cling/rldroid/cuversine/example [sort/app/gl/windows]"
+Targets="hash/samples/cling/rldroid/cuversine/example [sort/app/gl/windows/droid]"
 
 # Default
-[ "$#" = 0 ] && example=1 && app=1
+[ "$#" = 0 ] && example=1 && droid=1
 
 for Arg in "$@"; do eval "$Arg=1"; done
 # Exclusive flags
@@ -225,6 +228,12 @@ then
 		printf 'call C:\BuildTools\devcmd.bat\ncall build.bat\n' | wine cmd.exe 2>/dev/null
 		DidWork=1
 	fi
+ if [ "$droid" = 1 ]
+ then
+  cd ./lib/rawdrawandroid/
+  make -B -f ../../example/droid/TestMakefile push run
+  DidWork=1
+ fi
 fi
 
 if [ "$cling" = 1 ]

@@ -1,6 +1,6 @@
 /* Luca Raymaekers' base layer */
 
-#ifndef BASE_H
+#if !defined(BASE_H)
 #define BASE_H
 
 #if defined(RL_PERSONAL)

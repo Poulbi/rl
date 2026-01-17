@@ -1,6 +1,6 @@
 /* date = January 13th 2026 8:59 am */
 
-#ifndef EX_APP_H
+#if !defined(EX_APP_H)
 #define EX_APP_H
 
 NO_WARNINGS_BEGIN
@@ -59,11 +59,16 @@ struct app_state
     
     gl_render_data Render;
     
+    button *Buttons;
+    f32 ButtonListScrollOffset;
+    
     v3 Offset;
     v2 Angle;
     b32 Animate;
     
     s32 SelectedModelIdx;
+    
+    u8 Padding[256];
 };
 
 

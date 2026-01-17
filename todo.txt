@@ -1,9 +1,8 @@
 Example App
-- UI scrollable infinite Button list
+- Android platform layer
 - Buttons
   - animate button clicks
   - different color when button is for the selected model
-- mouse dragging
 - animating "bones"
 - metadesk for asset files
   - Create all path strings at initialization
@@ -15,16 +14,22 @@ Example App
     regions, this could be inferred from the vertices set up in Buttons.
     Therefore, we can probably merge those shaders into one draw call.
 - Use only one buffer for rendering quads
-#pragma pack(push, 1)
-typedef struct gl_render_quad_data gl_render_quad_data;
-struct gl_render_quad_data
-{
-    v3 Vertex;
-    v3 Color;
-    v2 Min, Max;
-    f32 Radius;
-};
-#pragma pack(pop)
+ #pragma pack(push, 1)
+ typedef struct gl_render_quad_data gl_render_quad_data;
+ struct gl_render_quad_data
+ {
+  v3 Vertex;
+  v3 Color;
+  v2 Min, Max;
+  f32 Radius;
+ };
+ #pragma pack(pop)
+- UI needs previous frame layout to query things like was this button pressed
+
+- infinite Button list
+- Linux platform:
+  - for input events, make sure we only get one event per frame.
+  - loop editing
 
 Misc
 - metadesk for build targets
@@ -40,6 +45,8 @@ Base
 - better profiler
 
 Archived
+x Mouse dragging
+x UI scrollable Button list
 x Build buttons and render after.
 x Investigate button drawing performance.
   - Font rasterizing is taking up most of the time.

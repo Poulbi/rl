@@ -4,7 +4,9 @@
 
 #include "base/base.c"
 
-#if OS_LINUX
+#if OS_ANDROID
+# include "ex_platform_android.c"
+#elif OS_LINUX
 # include "ex_platform_linux.cpp"
 #elif OS_WINDOWS
 # include "ex_platform_windows.cpp"
@@ -122,7 +124,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             
             if(!Paused)
             {
-                b32 ShouldQuit = Code.UpdateAndRender(ThreadContext, &AppMemory, PermanentArena, FrameArena, &Buffer, NewInput);
+                b32 ShouldQuit = Code.UpdateAndRender(ThreadContext, &AppMemory, PermanentArena, FrameArena, &Buffer, NewInput, OldInput);
                 // NOTE(luca): Since UpdateAndRender can take some time, there could have been a signal sent to INT the app.
                 ReadWriteBarrier;
                 *Running = *Running && !ShouldQuit;

@@ -28,9 +28,10 @@
 
 #ifdef CNFG_ANDROID
 
-
 #include "CNFGAndroid.h"
+
 extern struct android_app * gapp;
+
 static int OGLESStarted;
 void (*HandleCustomEventCallback)();
 int android_width, android_height;
@@ -65,40 +66,40 @@ int android_sdk_version;
 #define EGL_IMMEDIATE_SIZE 2048
 
 #ifdef USE_EGL_X
-	#error This feature has never been completed or tested.
-	Display *XDisplay;
-	Window XWindow;
+#error This feature has never been completed or tested.
+Display *XDisplay;
+Window XWindow;
 #else
-	typedef enum
-	{
-		FBDEV_PIXMAP_DEFAULT = 0,
-		FBDEV_PIXMAP_SUPPORTS_UMP = (1<<0),
-		FBDEV_PIXMAP_ALPHA_FORMAT_PRE = (1<<1),
-		FBDEV_PIXMAP_COLORSPACE_sRGB = (1<<2),
-		FBDEV_PIXMAP_EGL_MEMORY = (1<<3)        /* EGL allocates/frees this memory */
-	} fbdev_pixmap_flags;
+typedef enum
+{
+    FBDEV_PIXMAP_DEFAULT = 0,
+    FBDEV_PIXMAP_SUPPORTS_UMP = (1<<0),
+    FBDEV_PIXMAP_ALPHA_FORMAT_PRE = (1<<1),
+    FBDEV_PIXMAP_COLORSPACE_sRGB = (1<<2),
+    FBDEV_PIXMAP_EGL_MEMORY = (1<<3)        /* EGL allocates/frees this memory */
+} fbdev_pixmap_flags;
 
-	typedef struct fbdev_window
-	{
-		unsigned short width;
-		unsigned short height;
-	} fbdev_window;
+typedef struct fbdev_window
+{
+    unsigned short width;
+    unsigned short height;
+} fbdev_window;
 
-	typedef struct fbdev_pixmap
-	{
-		unsigned int height;
-		unsigned int width;
-		unsigned int bytes_per_pixel;
-		unsigned char buffer_size;
-		unsigned char red_size;
-		unsigned char green_size;
-		unsigned char blue_size;
-		unsigned char alpha_size;
-		unsigned char luminance_size;
-		fbdev_pixmap_flags flags;
-		unsigned short *data;
-		unsigned int format; /* extra format information in case rgbal is not enough, especially for YUV formats */
-	} fbdev_pixmap;
+typedef struct fbdev_pixmap
+{
+    unsigned int height;
+    unsigned int width;
+    unsigned int bytes_per_pixel;
+    unsigned char buffer_size;
+    unsigned char red_size;
+    unsigned char green_size;
+    unsigned char blue_size;
+    unsigned char alpha_size;
+    unsigned char luminance_size;
+    fbdev_pixmap_flags flags;
+    unsigned short *data;
+    unsigned int format; /* extra format information in case rgbal is not enough, especially for YUV formats */
+} fbdev_pixmap;
 
 #if defined( CNFG_ANDROID )
 EGLNativeWindowType native_window;
@@ -124,7 +125,7 @@ static EGLint const config_attribute_list[] = {
 #else
 	EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
 #endif
-
+    
 #else
 	EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
 	EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_PIXMAP_BIT,
@@ -188,7 +189,7 @@ int CNFGSetup( const char * WindowName, int w, int h )
 {
 	EGLint egl_major, egl_minor;
 	EGLint num_config;
-
+    
 	//This MUST be called before doing any initialization.
 	int events;
 	while( !OGLESStarted )
@@ -199,34 +200,33 @@ int CNFGSetup( const char * WindowName, int w, int h )
 			if (source != NULL) source->process(gapp, source);
 		}
 	}
-
-
+    
 #ifdef USE_EGL_X
 	XDisplay = XOpenDisplay(NULL);
 	if (!XDisplay) {
 		ERRLOG( "Error: failed to open X display.\n");
 		return -1;
 	}
-
+    
 	Window XRoot = DefaultRootWindow(XDisplay);
-
+    
 	XSetWindowAttributes XWinAttr;
 	XWinAttr.event_mask  =  ExposureMask | PointerMotionMask;
-
+    
 	XWindow = XCreateWindow(XDisplay, XRoot, 0, 0, WIDTH, HEIGHT, 0,
-				CopyFromParent, InputOutput,
-				CopyFromParent, CWEventMask, &XWinAttr);
-
+                            CopyFromParent, InputOutput,
+                            CopyFromParent, CWEventMask, &XWinAttr);
+    
 	Atom XWMDeleteMessage =
 		XInternAtom(XDisplay, "WM_DELETE_WINDOW", False);
-
+    
 	XMapWindow(XDisplay, XWindow);
 	XStoreName(XDisplay, XWindow, "Mali libs test");
 	XSetWMProtocols(XDisplay, XWindow, &XWMDeleteMessage, 1);
-
+    
 	egl_display = eglGetDisplay((EGLNativeDisplayType) XDisplay);
 #else
-
+    
 #ifndef CNFG_ANDROID
 	if( w >= 1 && h >= 1 )
 	{
@@ -234,60 +234,60 @@ int CNFGSetup( const char * WindowName, int w, int h )
 		native_window.height =h;
 	}
 #endif
-
+    
 	egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 #endif
 	if (egl_display == EGL_NO_DISPLAY) {
 		ERRLOG( "Error: No display found!\n");
 		return -1;
 	}
-
+    
 	if (!eglInitialize(egl_display, &egl_major, &egl_minor)) {
 		ERRLOG( "Error: eglInitialise failed!\n");
 		return -1;
 	}
-
+    
 	printf("EGL Version: \"%s\"\n",
 	       eglQueryString(egl_display, EGL_VERSION));
 	printf("EGL Vendor: \"%s\"\n",
 	       eglQueryString(egl_display, EGL_VENDOR));
 	printf("EGL Extensions: \"%s\"\n",
 	       eglQueryString(egl_display, EGL_EXTENSIONS));
-
+    
 	eglChooseConfig(egl_display, config_attribute_list, &egl_config, 1,
-			&num_config);
+                    &num_config);
 	printf( "Config: %d\n", num_config );
-
+    
 	printf( "Creating Context\n" );
 	egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT,
-//				NULL );
-				context_attribute_list);
+                                   //				NULL );
+                                   context_attribute_list);
 	if (egl_context == EGL_NO_CONTEXT) {
 		ERRLOG( "Error: eglCreateContext failed: 0x%08X\n",
-			eglGetError());
+               eglGetError());
 		return -1;
 	}
 	printf( "Context Created %p\n", egl_context );
-
+    
 #ifdef USE_EGL_X
 	egl_surface = eglCreateWindowSurface(egl_display, egl_config, XWindow,
-					     window_attribute_list);
+                                         window_attribute_list);
 #else
-
+    
 	if( native_window && !gapp->window )
 	{
 		printf( "WARNING: App restarted without a window.  Cannot progress.\n" );
 		exit( 0 );
 	}
-
+    
 	printf( "Getting Surface %p\n", native_window = gapp->window );
-
+    
 	if( !native_window )
 	{
 		printf( "FAULT: Cannot get window\n" );
 		return -5;
 	}
-
+    
 	if( w <= 0 || h <= 0 )
 	{
 		android_width = ANativeWindow_getWidth( native_window );
@@ -302,52 +302,52 @@ int CNFGSetup( const char * WindowName, int w, int h )
 	printf( "Width/Height: %dx%d\n", android_width, android_height );
 	egl_surface = eglCreateWindowSurface(egl_display, egl_config,
 #ifdef CNFG_ANDROID
-			     gapp->window,
+                                         gapp->window,
 #else
-			     (EGLNativeWindowType)&native_window,
+                                         (EGLNativeWindowType)&native_window,
 #endif
-			     window_attribute_list);
+                                         window_attribute_list);
 #endif
 	printf( "Got Surface: %p\n", egl_surface );
-
+    
 	if (egl_surface == EGL_NO_SURFACE) {
 		ERRLOG( "Error: eglCreateWindowSurface failed: "
-			"0x%08X\n", eglGetError());
+               "0x%08X\n", eglGetError());
 		return -1;
 	}
-
+    
 #ifndef CNFG_ANDROID
 	int width, height;
 	if (!eglQuerySurface(egl_display, egl_surface, EGL_WIDTH, &width) ||
 	    !eglQuerySurface(egl_display, egl_surface, EGL_HEIGHT, &height)) {
 		ERRLOG( "Error: eglQuerySurface failed: 0x%08X\n",
-			eglGetError());
+               eglGetError());
 		return -1;
 	}
 	printf("Surface size: %dx%d\n", width, height);
-
+    
 	native_window.width = width;
 	native_window.height = height;
 #endif
-
+    
 	if (!eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context)) {
 		ERRLOG( "Error: eglMakeCurrent() failed: 0x%08X\n",
-			eglGetError());
+               eglGetError());
 		return -1;
 	}
-
+    
 	printf("GL Vendor: \"%s\"\n", glGetString(GL_VENDOR));
 	printf("GL Renderer: \"%s\"\n", glGetString(GL_RENDERER));
 	printf("GL Version: \"%s\"\n", glGetString(GL_VERSION));
 	printf("GL Extensions: \"%s\"\n", glGetString(GL_EXTENSIONS));
-
+    
 	CNFGSetupBatchInternal();
-
+    
 	{
 		short dummyx, dummyy;
 		CNFGGetDimensions( &dummyx, &dummyy );
 	}
-
+    
 	return 0;
 }
 
@@ -355,7 +355,7 @@ void CNFGSetupFullscreen( const char * WindowName, int screen_number )
 {
 	//Removes decoration, must be called before setup.
 	AndroidMakeFullscreen();
-
+    
 	CNFGSetup( WindowName, -1, -1 );
 }
 
@@ -370,7 +370,7 @@ int32_t handle_input(struct android_app* app, AInputEvent* event)
 {
 #ifdef CNFG_ANDROID
 	//Potentially do other things here.
-
+    
 	if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION)
 	{
 		int pointer_count = AMotionEvent_getPointerCount(event);
@@ -378,12 +378,12 @@ int32_t handle_input(struct android_app* app, AInputEvent* event)
 		int flags = action & AMOTION_EVENT_ACTION_MASK;
 		int id = (action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
 		int pid = AMotionEvent_getPointerId(event, id);
-
+        
 		if(pid > 9 || pointer_count > MAX_NUM_TOUCHES){
 			printf("Pointer id larger than MAX_NUM_TOUCHES\n");
 			return 0;
 		}
-
+        
 		switch(flags){
 			case AMOTION_EVENT_ACTION_POINTER_UP:
 			case AMOTION_EVENT_ACTION_UP:{
@@ -425,7 +425,7 @@ int32_t handle_input(struct android_app* app, AInputEvent* event)
 			return (code == 4)?1:0; //don't override functionality.
 		}
 #endif
-
+        
 		return 1;
 	}
 #endif
@@ -434,7 +434,7 @@ int32_t handle_input(struct android_app* app, AInputEvent* event)
 
 int CNFGHandleInput()
 {
-
+    
 #ifdef CNFG_ANDROID
 	int events;
 	struct android_poll_source* source;
@@ -446,13 +446,13 @@ int CNFGHandleInput()
 		}
 	}
 #endif
-
+    
 #ifdef USE_EGL_X
 	while (1) {
 		XEvent event;
-
+        
 		XNextEvent(XDisplay, &event);
-
+        
 		if ((event.type == MotionNotify) ||
 		    (event.type == Expose))
 			Redraw(width, height);
@@ -476,12 +476,12 @@ void handle_cmd(struct android_app* app, int32_t cmd)
 {
 	switch (cmd)
 	{
-	case APP_CMD_DESTROY:
+        case APP_CMD_DESTROY:
 		//This gets called initially after back.
 		HandleDestroy();
 		ANativeActivity_finish( gapp->activity );
 		break;
-	case APP_CMD_INIT_WINDOW:
+        case APP_CMD_INIT_WINDOW:
 		//When returning from a back button suspension, this isn't called.
 		if( !OGLESStarted )
 		{
@@ -494,7 +494,7 @@ void handle_cmd(struct android_app* app, int32_t cmd)
 			HandleResume();
 		}
 		break;
-	case APP_CMD_TERM_WINDOW:
+        case APP_CMD_TERM_WINDOW:
 		//This gets called initially when you click "back"
 		//This also gets called when you are brought into standby.
 		//Not sure why - callbacks here seem to break stuff.
@@ -515,18 +515,18 @@ void handle_cmd(struct android_app* app, int32_t cmd)
 		if( HandleWindowTermination ) HandleWindowTermination();
 #endif
 		break;
-
-	case APP_CMD_PAUSE:
+        
+        case APP_CMD_PAUSE:
 		HandleSuspend();
 		break;
-
-	case APP_CMD_RESUME:
+        
+        case APP_CMD_RESUME:
 		HandleResume();
 		break;
-	case APP_CMD_CUSTOM_EVENT:
+        case APP_CMD_CUSTOM_EVENT:
 		if( HandleCustomEventCallback ) HandleCustomEventCallback();
 		break;
-	default:
+        default:
 		printf( "event not handled: %d\n", cmd);
 	}
 }
@@ -538,7 +538,7 @@ void android_main(struct android_app* app)
 	int main( int argc, char ** argv );
 	char mainptr[5] = { 'm', 'a', 'i', 'n', 0 };
 	char * argv[] = { mainptr, 0 };
-
+    
 	{
 		char sdk_ver_str[92];
 		int len = __system_property_get("ro.build.version.sdk", sdk_ver_str);
@@ -547,7 +547,7 @@ void android_main(struct android_app* app)
 		else
 			android_sdk_version = atoi(sdk_ver_str);
 	}
-
+    
 	gapp = app;
 	app->onAppCmd = handle_cmd;
 	app->onInputEvent = handle_input;
@@ -558,21 +558,21 @@ void android_main(struct android_app* app)
 
 #ifdef __cplusplus
 #define SETUP_FOR_JAVA_CALL \
-	JNIEnv * env = 0; \
-	JNIEnv ** envptr = &env; \
-	JavaVM * jniiptr = gapp->activity->vm; \
-	jniiptr->AttachCurrentThread( (JNIEnv**)&env, 0 ); \
-	env = (*envptr);
+JNIEnv * env = 0; \
+JNIEnv ** envptr = &env; \
+JavaVM * jniiptr = gapp->activity->vm; \
+jniiptr->AttachCurrentThread( (JNIEnv**)&env, 0 ); \
+env = (*envptr);
 #define ENVCALL
 #define JAVA_CALL_DETACH 	jniiptr->DetachCurrentThread();
 #else
 #define SETUP_FOR_JAVA_CALL \
-	const struct JNINativeInterface * env = (struct JNINativeInterface*)gapp->activity->env; \
-	const struct JNINativeInterface ** envptr = &env; \
-	const struct JNIInvokeInterface ** jniiptr = gapp->activity->vm; \
-	const struct JNIInvokeInterface * jnii = *jniiptr; \
-	jnii->AttachCurrentThread( jniiptr, &envptr, NULL); \
-	env = (*envptr);
+const struct JNINativeInterface * env = (struct JNINativeInterface*)gapp->activity->env; \
+const struct JNINativeInterface ** envptr = &env; \
+const struct JNIInvokeInterface ** jniiptr = gapp->activity->vm; \
+const struct JNIInvokeInterface * jnii = *jniiptr; \
+jnii->AttachCurrentThread( jniiptr, &envptr, NULL); \
+env = (*envptr);
 #define ENVCALL envptr,
 #define JAVA_CALL_DETACH       	jnii->DetachCurrentThread( jniiptr );
 #endif
@@ -581,15 +581,15 @@ void AndroidMakeFullscreen()
 {
 	//Partially based on https://stackoverflow.com/questions/47507714/how-do-i-enable-full-screen-immersive-mode-for-a-native-activity-ndk-app
 	SETUP_FOR_JAVA_CALL
-
-	//Get android.app.NativeActivity, then get getWindow method handle, returns view.Window type
-	jclass activityClass = env->FindClass( ENVCALL "android/app/NativeActivity");
+        
+        //Get android.app.NativeActivity, then get getWindow method handle, returns view.Window type
+        jclass activityClass = env->FindClass( ENVCALL "android/app/NativeActivity");
 	jmethodID getWindow = env->GetMethodID( ENVCALL activityClass, "getWindow", "()Landroid/view/Window;");
 	jobject window = env->CallObjectMethod( ENVCALL gapp->activity->clazz, getWindow);
 	jclass windowClass = env->FindClass( ENVCALL "android/view/Window");
 	jmethodID getDecorView = env->GetMethodID( ENVCALL windowClass, "getDecorView", "()Landroid/view/View;");
 	jobject decorView = env->CallObjectMethod( ENVCALL window, getDecorView);
-
+    
 	/*
 		jclass ClassActivity = env->FindClass( ENVCALL "android/app/Activity" );
 		const int flag_WindowProp = env->GetStaticIntField( ENVCALL windowClass, env->GetStaticFieldID( ENVCALL windowClass, "FEATURE_NO_TITLE", "I") );
@@ -597,7 +597,7 @@ void AndroidMakeFullscreen()
 		jobject lNativeActivity = gapp->activity->clazz;
 		env->CallBooleanMethod( ENVCALL lNativeActivity, requestWindowFeature, flag_WindowProp );
 	*/
-
+    
 	//Get the flag values associated with systemuivisibility
 	jclass viewClass = env->FindClass( ENVCALL "android/view/View");
 	const int flagLayoutHideNavigation = env->GetStaticIntField( ENVCALL viewClass, env->GetStaticFieldID( ENVCALL viewClass, "SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION", "I"));
@@ -610,8 +610,8 @@ void AndroidMakeFullscreen()
 	jmethodID setSystemUiVisibility = env->GetMethodID( ENVCALL viewClass, "setSystemUiVisibility", "(I)V");
 	//Call the decorView.setSystemUiVisibility(FLAGS)
 	env->CallVoidMethod( ENVCALL decorView, setSystemUiVisibility,
-		        (flagLayoutHideNavigation | flagLayoutFullscreen | flagLowProfile | flagHideNavigation | flagFullscreen | flagImmersiveSticky | flagLayoutStable));
-
+                        (flagLayoutHideNavigation | flagLayoutFullscreen | flagLowProfile | flagHideNavigation | flagFullscreen | flagImmersiveSticky | flagLayoutStable));
+    
 	//now set some more flags associated with layoutmanager -- note the $ in the class path
 	//search for api-versions.xml
 	//https://android.googlesource.com/platform/development/+/refs/tags/android-9.0.0_r48/sdk/api-versions.xml
@@ -623,31 +623,31 @@ void AndroidMakeFullscreen()
 	//    const int flag_WinMan_flag_not_fullscreen = env->GetStaticIntField(layoutManagerClass, (env->GetStaticFieldID(layoutManagerClass, "FLAG_FORCE_NOT_FULLSCREEN", "I") ));
 	//call window.addFlags(FLAGS)
 	env->CallVoidMethod( ENVCALL window, (env->GetMethodID (ENVCALL windowClass, "addFlags" , "(I)V")), (flag_WinMan_Fullscreen | flag_WinMan_KeepScreenOn | flag_WinMan_hw_acc | flag_WinMan_NoLimits));
-
-
-
-/*
-	// Seems to have no impact, and doesn't work with older Android versions.
-	jmethodID setDecorFitsSystemWindows = env->GetMethodID( ENVCALL windowClass, "setDecorFitsSystemWindows", "(Z)V");
-	env->CallVoidMethod( ENVCALL window, setDecorFitsSystemWindows, JNI_FALSE );
-
-	// "Immersive Mode" (Since Android 11+)
-	jmethodID getWindowInsetsController = env->GetMethodID( ENVCALL viewClass, "getWindowInsetsController", "()Landroid/view/WindowInsetsController;" );
-	if( getWindowInsetsController )
-	{
-		//windowInsetsController.hide(Type.systemBars())
-		jobject windowInsetsController = env->CallObjectMethod( ENVCALL decorView, getWindowInsetsController );
-		jclass windowInsetsControllerClass = env->FindClass( ENVCALL "android/view/WindowInsetsController" );
-
-		jclass windowInsetsTypeClass = env->FindClass( ENVCALL "android/view/WindowInsets/Type" );
-		jmethodID typeSystemBars = env->GetStaticMethodID( ENVCALL windowInsetsTypeClass, "systemBars", "()I" );
-		int systemBarsType = env->CallStaticIntMethod( ENVCALL windowInsetsTypeClass, typeSystemBars );
-
-		jmethodID hide = env->GetMethodID( ENVCALL windowInsetsControllerClass, "hide", "(I)V" );
-		env->CallVoidMethod( ENVCALL windowInsetsController, hide, systemBarsType );
-	}
-*/
-
+    
+    
+    
+    /*
+        // Seems to have no impact, and doesn't work with older Android versions.
+        jmethodID setDecorFitsSystemWindows = env->GetMethodID( ENVCALL windowClass, "setDecorFitsSystemWindows", "(Z)V");
+        env->CallVoidMethod( ENVCALL window, setDecorFitsSystemWindows, JNI_FALSE );
+    
+        // "Immersive Mode" (Since Android 11+)
+        jmethodID getWindowInsetsController = env->GetMethodID( ENVCALL viewClass, "getWindowInsetsController", "()Landroid/view/WindowInsetsController;" );
+        if( getWindowInsetsController )
+        {
+            //windowInsetsController.hide(Type.systemBars())
+            jobject windowInsetsController = env->CallObjectMethod( ENVCALL decorView, getWindowInsetsController );
+            jclass windowInsetsControllerClass = env->FindClass( ENVCALL "android/view/WindowInsetsController" );
+    
+            jclass windowInsetsTypeClass = env->FindClass( ENVCALL "android/view/WindowInsets/Type" );
+            jmethodID typeSystemBars = env->GetStaticMethodID( ENVCALL windowInsetsTypeClass, "systemBars", "()I" );
+            int systemBarsType = env->CallStaticIntMethod( ENVCALL windowInsetsTypeClass, typeSystemBars );
+    
+            jmethodID hide = env->GetMethodID( ENVCALL windowInsetsControllerClass, "hide", "(I)V" );
+            env->CallVoidMethod( ENVCALL windowInsetsController, hide, systemBarsType );
+        }
+    */
+    
 	JAVA_CALL_DETACH
 }
 
@@ -657,20 +657,20 @@ const char* AndroidGetExternalFilesDir()
 	const struct JNINativeInterface ** envptr = &env;
 	const struct JNIInvokeInterface ** jniiptr = gapp->activity->vm;
 	const struct JNIInvokeInterface * jnii = *jniiptr;
-
+    
 	jnii->AttachCurrentThread( jniiptr, &envptr, NULL);
 	env = (*envptr);
 	jclass activityClass = env->FindClass( envptr, "android/app/NativeActivity");
 	jobject lNativeActivity = gapp->activity->clazz;
-
-    	jmethodID mid_getExtStorage = env->GetMethodID(envptr,activityClass,"getExternalFilesDir", "(Ljava/lang/String;)Ljava/io/File;");
-    	jobject obj_File = env->CallObjectMethod(envptr,lNativeActivity, mid_getExtStorage, NULL);
-    	jclass cls_File = env->FindClass(envptr,"java/io/File");
-    	jmethodID mid_getPath = env->GetMethodID(envptr,cls_File, "getPath", "()Ljava/lang/String;");
-    	jstring obj_Path = (jstring) env->CallObjectMethod(envptr,obj_File, mid_getPath);
-    	const char* path = env->GetStringUTFChars(envptr,obj_Path, NULL);
-    	//printf("EXTERNAL PATH = %s\n", path);
-    	env->ReleaseStringUTFChars(envptr,obj_Path, path);	
+    
+    jmethodID mid_getExtStorage = env->GetMethodID(envptr,activityClass,"getExternalFilesDir", "(Ljava/lang/String;)Ljava/io/File;");
+    jobject obj_File = env->CallObjectMethod(envptr,lNativeActivity, mid_getExtStorage, NULL);
+    jclass cls_File = env->FindClass(envptr,"java/io/File");
+    jmethodID mid_getPath = env->GetMethodID(envptr,cls_File, "getPath", "()Ljava/lang/String;");
+    jstring obj_Path = (jstring) env->CallObjectMethod(envptr,obj_File, mid_getPath);
+    const char* path = env->GetStringUTFChars(envptr,obj_Path, NULL);
+    //printf("EXTERNAL PATH = %s\n", path);
+    env->ReleaseStringUTFChars(envptr,obj_Path, path);	
 	jnii->DetachCurrentThread( jniiptr );
 	return path;
 }
@@ -680,30 +680,30 @@ void AndroidDisplayKeyboard(int pShow)
 	//Based on https://stackoverflow.com/questions/5864790/how-to-show-the-soft-keyboard-on-native-activity
 	jint lFlags = 0;
 	SETUP_FOR_JAVA_CALL
-
-	jclass activityClass = env->FindClass( ENVCALL "android/app/NativeActivity");
-
+        
+        jclass activityClass = env->FindClass( ENVCALL "android/app/NativeActivity");
+    
 	// Retrieves NativeActivity.
 	jobject lNativeActivity = gapp->activity->clazz;
-
-
+    
+    
 	// Retrieves Context.INPUT_METHOD_SERVICE.
 	jclass ClassContext = env->FindClass( ENVCALL "android/content/Context");
 	jfieldID FieldINPUT_METHOD_SERVICE = env->GetStaticFieldID( ENVCALL ClassContext, "INPUT_METHOD_SERVICE", "Ljava/lang/String;" );
 	jobject INPUT_METHOD_SERVICE = env->GetStaticObjectField( ENVCALL ClassContext, FieldINPUT_METHOD_SERVICE );
-
+    
 	// Runs getSystemService(Context.INPUT_METHOD_SERVICE).
 	jclass ClassInputMethodManager = env->FindClass( ENVCALL "android/view/inputmethod/InputMethodManager" );
 	jmethodID MethodGetSystemService = env->GetMethodID( ENVCALL activityClass, "getSystemService", "(Ljava/lang/String;)Ljava/lang/Object;");
 	jobject lInputMethodManager = env->CallObjectMethod( ENVCALL lNativeActivity, MethodGetSystemService, INPUT_METHOD_SERVICE);
-
+    
 	// Runs getWindow().getDecorView().
 	jmethodID MethodGetWindow = env->GetMethodID( ENVCALL activityClass, "getWindow", "()Landroid/view/Window;");
 	jobject lWindow = env->CallObjectMethod( ENVCALL lNativeActivity, MethodGetWindow);
 	jclass ClassWindow = env->FindClass( ENVCALL "android/view/Window");
 	jmethodID MethodGetDecorView = env->GetMethodID( ENVCALL ClassWindow, "getDecorView", "()Landroid/view/View;");
 	jobject lDecorView = env->CallObjectMethod( ENVCALL lWindow, MethodGetDecorView);
-
+    
 	if (pShow) {
 		// Runs lInputMethodManager.showSoftInput(...).
 		jmethodID MethodShowSoftInput = env->GetMethodID( ENVCALL ClassInputMethodManager, "showSoftInput", "(Landroid/view/View;I)Z");
@@ -713,41 +713,41 @@ void AndroidDisplayKeyboard(int pShow)
 		jclass ClassView = env->FindClass( ENVCALL "android/view/View");
 		jmethodID MethodGetWindowToken = env->GetMethodID( ENVCALL ClassView, "getWindowToken", "()Landroid/os/IBinder;");
 		jobject lBinder = env->CallObjectMethod( ENVCALL lDecorView, MethodGetWindowToken);
-
+        
 		// lInputMethodManager.hideSoftInput(...).
 		jmethodID MethodHideSoftInput = env->GetMethodID( ENVCALL ClassInputMethodManager, "hideSoftInputFromWindow", "(Landroid/os/IBinder;I)Z");
 		/*jboolean lRes = */env->CallBooleanMethod( ENVCALL lInputMethodManager, MethodHideSoftInput, lBinder, lFlags);
 	}
-
+    
 	JAVA_CALL_DETACH
 }
 
 int AndroidGetUnicodeChar( int keyCode, int metaState )
 {
 	//https://stackoverflow.com/questions/21124051/receive-complete-android-unicode-input-in-c-c/43871301
-
+    
 	int eventType = AKEY_EVENT_ACTION_DOWN;
-
+    
 	SETUP_FOR_JAVA_CALL
-
-	//jclass activityClass = env->FindClass( envptr, "android/app/NativeActivity");
-	// Retrieves NativeActivity.
-	//jobject lNativeActivity = gapp->activity->clazz;
-
-	jclass class_key_event = env->FindClass( ENVCALL "android/view/KeyEvent");
+        
+        //jclass activityClass = env->FindClass( envptr, "android/app/NativeActivity");
+        // Retrieves NativeActivity.
+        //jobject lNativeActivity = gapp->activity->clazz;
+    
+        jclass class_key_event = env->FindClass( ENVCALL "android/view/KeyEvent");
 	int unicodeKey;
-
+    
 	jmethodID method_get_unicode_char = env->GetMethodID( ENVCALL class_key_event, "getUnicodeChar", "(I)I");
 	jmethodID eventConstructor = env->GetMethodID( ENVCALL class_key_event, "<init>", "(II)V");
 	jobject eventObj = env->NewObject( ENVCALL class_key_event, eventConstructor, eventType, keyCode);
-
+    
 	unicodeKey = env->CallIntMethod( ENVCALL eventObj, method_get_unicode_char, metaState );
-
+    
 	// Finished with the JVM.
 	JAVA_CALL_DETACH
-
-	//printf("Unicode key is: %d", unicodeKey);
-	return unicodeKey;
+        
+        //printf("Unicode key is: %d", unicodeKey);
+        return unicodeKey;
 }
 
 
@@ -784,18 +784,18 @@ int AndroidHasPermissions( const char* perm_name)
 {
 	struct android_app* app = gapp;
 	SETUP_FOR_JAVA_CALL
-
-	if( android_sdk_version < 23 )
+        
+        if( android_sdk_version < 23 )
 	{
 		printf( "Android SDK version %d does not support AndroidHasPermissions\n", android_sdk_version );
 		return 1;
 	}
-
+    
 	int result = 0;
 	jstring ls_PERM = android_permission_name(envptr, perm_name);
-
+    
 	jint PERMISSION_GRANTED = (-1);
-
+    
 	{
 		jclass ClassPackageManager = env->FindClass( ENVCALL "android/content/pm/PackageManager" );
 		jfieldID lid_PERMISSION_GRANTED = env->GetStaticFieldID( ENVCALL ClassPackageManager, "PERMISSION_GRANTED", "I" );
@@ -808,10 +808,10 @@ int AndroidHasPermissions( const char* perm_name)
 		jint int_result = env->CallIntMethod( ENVCALL activity, MethodcheckSelfPermission, ls_PERM );
 		result = (int_result == PERMISSION_GRANTED);
 	}
-
+    
 	JAVA_CALL_DETACH
-
-	return result;
+        
+        return result;
 }
 
 /**
@@ -828,21 +828,21 @@ void AndroidRequestAppPermissions(const char * perm)
 		printf( "Android SDK version %d does not support AndroidRequestAppPermissions\n",android_sdk_version );
 		return;
 	}
-
+    
 	struct android_app* app = gapp;
 	SETUP_FOR_JAVA_CALL
-
-	jobject activity = app->activity->clazz;
-
+        
+        jobject activity = app->activity->clazz;
+    
 	jobjectArray perm_array = env->NewObjectArray( ENVCALL 1, env->FindClass( ENVCALL "java/lang/String"), env->NewStringUTF( ENVCALL "" ) );
 	env->SetObjectArrayElement( ENVCALL perm_array, 0, android_permission_name(envptr, perm ) );
 	jclass ClassActivity = env->FindClass( ENVCALL "android/app/Activity" );
-
+    
 	jmethodID MethodrequestPermissions = env->GetMethodID( ENVCALL ClassActivity, "requestPermissions", "([Ljava/lang/String;I)V" );
-
+    
 	// Last arg (0) is just for the callback (that I do not use)
 	env->CallVoidMethod( ENVCALL activity, MethodrequestPermissions, perm_array, 0 );
-
+    
 	JAVA_CALL_DETACH
 }
 
@@ -858,8 +858,8 @@ void AndroidSendToBack( int param )
 {
 	struct android_app* app = gapp;
 	SETUP_FOR_JAVA_CALL
-	jobject activity = app->activity->clazz;
-
+        jobject activity = app->activity->clazz;
+    
 	//_glfmCallJavaMethodWithArgs(jni, gapp->activity->clazz, "moveTaskToBack", "(Z)Z", Boolean, false);
 	jclass ClassActivity = env->FindClass( ENVCALL "android/app/Activity" );
 	jmethodID MethodmoveTaskToBack = env->GetMethodID( ENVCALL ClassActivity, "moveTaskToBack", "(Z)Z" );

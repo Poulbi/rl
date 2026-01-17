@@ -1,12 +1,7 @@
-#if !defined(RL_FONT_H)
+#ifndef RL_FONT_H
 #define RL_FONT_H
 
-#include <stdarg.h>
-#include <stdio.h>
 #include "lib/stb_truetype.h"
-#include "lib/stb_sprintf.h"
-
-// TODO(luca): Better UTF8 handling instead of passing a flag in parameters.
 
 struct app_font
 {
@@ -18,17 +13,32 @@ struct app_font
     b32 Initialized; // For debugging.
 };
 
+internal f32 rlf_GetBaseLine(app_font *Font, f32 Scale);
+internal void rlf_InitFont(app_font *Font, char *FilePath);
+internal void rlf_DrawCharacter(arena *Arena, app_offscreen_buffer *Buffer,  u8 *FontBitmap,
+                                int FontWidth, int FontHeight, 
+                                int XOffset, int YOffset,
+                                u32 Color);
+internal void rlf_DrawText(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font, f32 HeightPixels,
+                           str8 Text, v2 Offset, u32 Color, b32 IsUTF8);
+internal void rlf_DrawTextInBox(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font, 
+                                str8 Text, f32 HeightPx, u32 Color,
+                                v2 BoxMin, v2 BoxMax, b32 Centered);
+internal void rlf_DrawTextFormat(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font,
+                                 f32 HeightPx, v2 Offset, u32 Color, b32 IsUTF8, 
+                                 char *Format, ...);
+
 //~ API
 
 internal f32
-GetBaseLine(app_font *Font, f32 Scale)
+rlf_GetBaseLine(app_font *Font, f32 Scale)
 {
     f32 Result = Scale*(f32)(Font->Ascent - Font->Descent + Font->LineGap);
     return Result;
 }
 
 internal void
-InitFont(app_font *Font, char *FilePath)
+rlf_InitFont(app_font *Font, char *FilePath)
 {
     str8 File = OS_ReadEntireFileIntoMemory(FilePath);
     
@@ -57,7 +67,7 @@ InitFont(app_font *Font, char *FilePath)
 }
 
 internal f32
-Lerp(f32 A, f32 B, f32 t)
+rlf_Lerp(f32 A, f32 B, f32 t)
 {
     f32 Result = A*t + B*(1-t);
     return Result;
@@ -65,10 +75,10 @@ Lerp(f32 A, f32 B, f32 t)
 
 //- Rendering 
 internal void
-DrawCharacter(arena *Arena, app_offscreen_buffer *Buffer,  u8 *FontBitmap,
-              int FontWidth, int FontHeight, 
-              int XOffset, int YOffset,
-              u32 Color)
+rlf_DrawCharacter(arena *Arena, app_offscreen_buffer *Buffer,  u8 *FontBitmap,
+                  int FontWidth, int FontHeight, 
+                  int XOffset, int YOffset,
+                  u32 Color)
 {
     s32 MinX = 0;
     s32 MinY = 0;
@@ -116,9 +126,9 @@ DrawCharacter(arena *Arena, app_offscreen_buffer *Buffer,  u8 *FontBitmap,
             f32 DB = (f32)((*Pixel >> 0) & 0xFF);
             
 #if 0
-            f32 R = Lerp(Color.R*255.0f, DR, Alpha);
-            f32 G = Lerp(Color.G*255.0f, DG, Alpha);
-            f32 B = Lerp(Color.B*255.0f, DB, Alpha);
+            f32 R = rlf_Lerp(Color.R*255.0f, DR, Alpha);
+            f32 G = rlf_Lerp(Color.G*255.0f, DG, Alpha);
+            f32 B = rlf_Lerp(Color.B*255.0f, DB, Alpha);
             f32 A = 255.0f;
 #else
             f32 SR = (f32)((Color >> 16) & 0xFF);
@@ -147,9 +157,8 @@ DrawCharacter(arena *Arena, app_offscreen_buffer *Buffer,  u8 *FontBitmap,
 
 
 internal void
-DrawText(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font, 
-         f32 HeightPixels,
-         v2 Offset, b32 IsUTF8, u32 Color, str8 Text)
+rlf_DrawText(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font, f32 HeightPixels,
+             str8 Text, v2 Offset, u32 Color, b32 IsUTF8)
 {
     Assert(Font->Initialized);
     
@@ -166,6 +175,7 @@ DrawText(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font,
         s32 AdvanceWidth, LeftSideBearing;
         s32 X0, Y0, X1, Y1;
         u8 *FontBitmap = 0;
+        // TODO(luca): Get rid of malloc.
         stbtt_GetCodepointBitmapBox(&Font->Info, CharAt, 
                                     FontScale, FontScale, 
                                     &X0, &Y0, &X1, &Y1);
@@ -176,12 +186,13 @@ DrawText(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font,
                                   FontWidth, FontHeight, FontWidth, 
                                   FontScale, FontScale, CharAt);
         
+        
         stbtt_GetCodepointHMetrics(&Font->Info, CharAt, &AdvanceWidth, &LeftSideBearing);
         
         s32 XOffset = floorf(Offset.X + LeftSideBearing*FontScale);
         s32 YOffset = Offset.Y + Y0;
         
-        DrawCharacter(Arena, Buffer, FontBitmap, FontWidth, FontHeight, XOffset, YOffset, Color);
+        rlf_DrawCharacter(Arena, Buffer, FontBitmap, FontWidth, FontHeight, XOffset, YOffset, Color);
         
         Offset.X += roundf(AdvanceWidth*FontScale);
     }
@@ -199,9 +210,9 @@ DrawText(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font,
 //    II. Continue until end of string.
 
 internal void
-DrawTextInBox(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font, 
-              str8 Text, f32 HeightPx, u32 Color,
-              v2 BoxMin, v2 BoxMax, b32 Centered)
+rlf_DrawTextInBox(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font, 
+                  str8 Text, f32 HeightPx, u32 Color,
+                  v2 BoxMin, v2 BoxMax, b32 Centered)
 {
     s32 *CharacterPixelWidths = PushArray(Arena, s32, Text.Size);
     u32 *WrapPositions = PushArray(Arena, u32, 0);
@@ -284,7 +295,7 @@ DrawTextInBox(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font,
         }
     }
     
-    f32 YAdvance = GetBaseLine(Font, FontScale);
+    f32 YAdvance = rlf_GetBaseLine(Font, FontScale);
     v2 TextOffset = BoxMin;
     TextOffset.Y += YAdvance;
     
@@ -323,8 +334,9 @@ DrawTextInBox(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font,
                 TextOffset.X = BoxMin.X + ((MaxWidth - TextWidth)/2);
             }
             
-            DrawText(Arena, Buffer, Font, HeightPx, 
-                     TextOffset, false, Color, S8FromTo(Text, Start, Position));
+            rlf_DrawText(Arena, Buffer, Font, HeightPx, 
+                         str8{Text.Data + Start, Position - Start}, 
+                         TextOffset, Color, false);
         }
         
         TextOffset.Y += YAdvance;
@@ -352,11 +364,24 @@ DrawTextInBox(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font,
     
     if(TextOffset.Y - FontScale*Font->Descent < BoxMax.Y)
     {
-        DrawText(Arena, Buffer, Font, HeightPx, TextOffset, false, Color, S8From(Text, Start)); 
+        rlf_DrawText(Arena, Buffer, Font, HeightPx, 
+                     str8{Text.Data + Start, Text.Size - Start}, 
+                     TextOffset, Color, false); 
     }
 }
 
-#define DrawTextFormat(Arena, Buffer, Font, HeightPx, Offset, IsUTF8, Color, Format, ...) \
-DrawText(Arena, Buffer, Font, HeightPx, Offset, IsUTF8, Color, FormatText(Arena, Format, ##__VA_ARGS__));
+internal void
+rlf_DrawTextFormat(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font,
+                   f32 HeightPx, v2 Offset, u32 Color, b32 IsUTF8, 
+                   char *Format, ...)
+{
+    str8 Text = {0};
+    Text.Data = PushArray(Arena, u8, 256);
+    va_list Args;
+    va_start(Args, Format);
+    Text.Size = (umm)vsprintf((char *)Text.Data, Format, Args);
+    
+    rlf_DrawText(Arena, Buffer, Font, HeightPx, Text, Offset, Color, IsUTF8);
+}
 
 #endif //RL_FONT_H

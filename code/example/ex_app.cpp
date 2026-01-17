@@ -10,6 +10,9 @@
 #define New(type, Name, Array, Count) type *Name = Array + Count; Count += 1;
 
 //~ Constants
+
+#define MaxButtonsCount 3000
+
 #define U32ToV3Arg(Hex) \
 ((f32)((Hex >> 8*2) & 0xFF)/255.0f), \
 ((f32)((Hex >> 8*1) & 0xFF)/255.0f), \
@@ -56,6 +59,9 @@ S8(Folder), \
 S8(Path_Models Folder SLASH "model.obj"), \
 S8(Path_Models Folder SLASH "texture.png") \
 }
+
+
+global_variable int DebugGlobalCounter;
 
 global_variable model_path Models[] = 
 {
@@ -435,7 +441,8 @@ ResetApp(app_state *App)
     App->Animate = false;
 }
 
-str8 FormatText(arena *Arena, char *Format, ...)
+internal str8 
+FormatText(arena *Arena, char *Format, ...)
 {
     str8 Result = {};
     
@@ -480,7 +487,7 @@ AddButton(app_input *Input, v2 BufferDim,
         b32 Hovered = InBounds(Pos, Min, Max);
         
         // TODO(luca): Parameterize clicking behaviour.
-#if 1        
+#if 0        
         // NOTE(luca): If mouse released and hovered then the button is considered clicked
         Clicked = (Button->Pressed && Hovered && !ButtonLeft.EndedDown);
         
@@ -493,12 +500,11 @@ AddButton(app_input *Input, v2 BufferDim,
         // NOTE(luca): Only hover when mouse button is up
         Button->Hovered = (Hovered && !ButtonLeft.EndedDown);
 #else
-        Button->Hovered = (Hovered && !ButtonLeft.EndedDown);
-        
-        // NOTE(luca): Only triggers if this is the first click 
         Clicked = (Hovered && WasPressed(ButtonLeft));
         
-        Button->Pressed = (Hovered && ButtonLeft.EndedDown);
+        Button->Hovered = Hovered;
+        Button->Pressed = (Clicked || 
+                           (Button->Pressed && Hovered && ButtonLeft.EndedDown));
 #endif
     }
     
@@ -549,15 +555,16 @@ DrawButton(arena *Arena, v2 BufferDim, app_offscreen_buffer *TextImage,  app_fon
         f32 HeightPx = (f32)(TextImage->Width/30);
         
         f32 FontScale = stbtt_ScaleForPixelHeight(&Font->Info, HeightPx);
-        f32 Baseline = rlf_GetBaseLine(Font, FontScale);
+        f32 Baseline = GetBaseLine(Font, FontScale);
         
         str8 Text = FormatText(Arena, " " S8Fmt, S8Arg(Button->Text));
         if(Text.Size > 6) Text.Size = 6;
         
         f32 X = (Button->Min.X * (f32)TextImage->Width);
         f32 Y = (Button->Min.Y * (f32)TextImage->Height);
-        rlf_DrawText(Arena, TextImage, Font, 
-                     HeightPx, Text, {X, Y + Baseline}, ColorU32_ButtonText, false);
+        DrawText(Arena, TextImage, Font, 
+                 HeightPx, {X, Y + Baseline}, false,
+                 ColorU32_ButtonText, Text);
     }
 }
 
@@ -649,10 +656,12 @@ UPDATE_AND_RENDER(UpdateAndRender)
             RandomSeed(&App->Series, 0);
             GLADVersion = gladLoaderLoadGL();
             
+            App->Buttons = PushArray(PermanentArena, button, MaxButtonsCount);
+            
             ResetApp(App);
             
             char *FontPath = PathFromExe(FrameArena, Memory->ExeDirPath, S8(Path_Font));
-            rlf_InitFont(&App->Font, FontPath);
+            InitFont(&App->Font, FontPath);
             
             // GL Setup
             gl_Init(PermanentArena, Memory, &App->Render);
@@ -868,19 +877,24 @@ UPDATE_AND_RENDER(UpdateAndRender)
         OS_ProfileAndPrint("Obj read");
     }
     
-    u32 MaxButtonsCount = 3000;
     u32 ButtonsCount = 0;
-    button *Buttons = PushArray(FrameArena, button, MaxButtonsCount);
-    v2 ButtonMin = V2(0.01f, 0.01f);
+    
+    v2 ButtonMin = V2(0.02f, 0.02f);
     v2 ButtonDim = V2(0.11f, 0.05f);
+    
+    v2 BackgroundMin = {0.0f, 0.0f};
+    v2 BackgroundMax = {ButtonDim.X + 2.0f*ButtonMin.X, 1.0f};
+    
     f32 ButtonPadY = 0.01f;
     f32 ButtonCornerRadius = 0.25f;
     v2 BufferDim = V2S32(Buffer->Width, Buffer->Height);
     
     // UI Create
-    {    
+    {
+        ButtonMin.Y += App->ButtonListScrollOffset;
+        
         if(AddButton(Input, BufferDim,
-                     &ButtonsCount, Buttons, ButtonMin, ButtonDim, ButtonPadY, ButtonCornerRadius, 
+                     &ButtonsCount, App->Buttons, ButtonMin, ButtonDim, ButtonPadY, ButtonCornerRadius, 
                      S8("Reset")))
         {
             ResetApp(App);
@@ -889,11 +903,38 @@ UPDATE_AND_RENDER(UpdateAndRender)
         for EachElement(Idx, Models)
         {
             if(AddButton(Input, BufferDim,
-                         &ButtonsCount, Buttons, ButtonMin, ButtonDim, ButtonPadY, ButtonCornerRadius, Models[Idx].Name))
+                         &ButtonsCount, App->Buttons, ButtonMin, ButtonDim, ButtonPadY, ButtonCornerRadius, Models[Idx].Name))
             {
                 App->SelectedModelIdx = (s32)Idx;
             }
         }
+        
+        // Input on background
+        {    
+            app_button_state ButtonLeft = Input->Buttons[PlatformButton_Left];
+            v2 BufferDim = V2S32(Buffer->Width, Buffer->Height);
+            v2 Pos = V2S32(Input->MouseX, Input->MouseY);
+            v2 Min = V2MulV2(BackgroundMin, BufferDim); 
+            v2 Max = V2MulV2(BackgroundMax, BufferDim);
+            
+            f32 ButtonMinY = (ButtonMin.Y - App->ButtonListScrollOffset);
+            f32 ButtonHeight = ButtonDim.Y + ButtonPadY;
+            f32 TotalHeight = ButtonHeight*(f32)ButtonsCount + ButtonMinY + ButtonPadY;
+            f32 Overflow = TotalHeight - 1.0f;
+            
+            f32 YMoved = (f32)(Input->MouseY - OldInput->MouseY);
+            
+            if(Overflow > 0.0f)
+            {                
+                if(InBounds(Pos, Min, Max) &&
+                   ButtonLeft.EndedDown)
+                {
+                    App->ButtonListScrollOffset += (-Overflow)*(YMoved/BufferDim.Y)*2.0f;
+                    App->ButtonListScrollOffset = Clamp(-Overflow, App->ButtonListScrollOffset, 0.0f);
+                }
+            }
+        }
+        
         OS_ProfileAndPrint("UI Create");
     }
     
@@ -928,12 +969,9 @@ UPDATE_AND_RENDER(UpdateAndRender)
         {    
             // Background for buttons
             {
-                v3 Color = {U32ToV3Arg(0xFF5E81AC)};
-                
-                v2 Min = {ButtonMin.X - 0.01f, ButtonMin.Y - 0.01f};
-                v2 Max = {ButtonMin.X + ButtonDim.X + 0.01f, 1.0f};
-                v2 ClipMin = V2MulV2(V2AddF32(V2MulF32(Min, 2.0f), -1.0f), V2(1.0f, -1.0f));
-                v2 ClipMax = V2MulV2(V2AddF32(V2MulF32(Max, 2.0f), -1.0f), V2(1.0f, -1.0f));
+                v3 BackgroundColor = {U32ToV3Arg(0xFF5E81AC)};
+                v2 ClipMin = V2MulV2(V2AddF32(V2MulF32(BackgroundMin, 2.0f), -1.0f), V2(1.0f, -1.0f));
+                v2 ClipMax = V2MulV2(V2AddF32(V2MulF32(BackgroundMax, 2.0f), -1.0f), V2(1.0f, -1.0f));
                 
                 umm OffsetIdx = 0*6;
                 v3 *Vertices = ButtonVertices + OffsetIdx;
@@ -943,9 +981,9 @@ UPDATE_AND_RENDER(UpdateAndRender)
                 f32 *Radii = ButtonRadii + OffsetIdx;
                 
                 MakeQuadV3(Vertices, ClipMin, ClipMax, -1.0f);
-                SetProvokingV3(Colors, Color);
-                SetProvokingV2(Minima, Min);
-                SetProvokingV2(Maxima, Max);
+                SetProvokingV3(Colors, BackgroundColor);
+                SetProvokingV2(Minima, BackgroundMin);
+                SetProvokingV2(Maxima, BackgroundMax);
                 SetProvokingF32(Radii, 0.0f);
             }
             
@@ -953,7 +991,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
             {        
                 for EachIndex(Idx, ButtonsCount)
                 {
-                    button *Button = Buttons + Idx;
+                    button *Button = App->Buttons + Idx;
                     
                     umm OffsetIdx = (Idx + 1)*6;
                     DrawButton(FrameArena, BufferDim, &TextImage, &App->Font,
@@ -967,6 +1005,16 @@ UPDATE_AND_RENDER(UpdateAndRender)
                 
                 OS_ProfileAndPrint("Draw buttons");
             }
+            
+#if 1
+            // NOTE(luca): Debug info
+            {
+                DrawTextFormat(FrameArena, &TextImage, &App->Font, 32.0f, V2(600.0f, 32.0f), false, ColorU32_Text, 
+                               "%f"
+                               ,
+                               App->ButtonListScrollOffset);
+            }
+#endif
             
         }
         

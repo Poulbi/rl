@@ -1,8 +1,10 @@
-#ifndef BASE_MACROS_H
+#if !defined(BASE_MACROS_H)
 #define BASE_MACROS_H
 
 // detect OS
-#if __linux__
+#if ANDROID
+# define OS_ANDROID 1
+#elif __linux__
 # define OS_LINUX 1
 #elif _WIN32
 # define OS_WINDOWS 1
@@ -25,25 +27,28 @@
 #endif
 
 // Zero undefined
-#ifndef OS_LINUX
+#if !defined(OS_LINUX)
 # define OS_LINUX 0
 #endif
-#ifndef OS_WINDOWS
+#if !defined(OS_WINDOWS)
 # define OS_WINDOWS 0
 #endif
-#ifndef COMPILER_MSVC
+#if !defined(OS_ANDROID)
+# define OS_ANDROID 0
+#endif
+#if !defined(COMPILER_MSVC)
 # define COMPILER_MSVC 0
 #endif
-#ifndef COMPILER_LLVM
+#if !defined(COMPILER_LLVM)
 # define COMPILER_LLVM 0
 #endif
-#ifndef COMPILER_GNU
+#if !defined(COMPILER_GNU)
 # define COMPILER_GNU 0
 #endif
-#ifndef LANG_C
+#if !defined(LANG_C)
 # define LANG_C 0
 #endif
-#ifndef LANG_CPP
+#if !defined(LANG_CPP)
 # define LANG_CPP 0
 #endif
 
@@ -56,7 +61,7 @@
 # include <stdio.h>
 # define RADDBG_MARKUP_IMPLEMENTATION
 # define ssize_t SSIZE_T
-#elif OS_LINUX
+#else
 # include <sys/types.h>
 # define RADDBG_MARKUP_STUBS
 #endif

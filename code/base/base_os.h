@@ -1,6 +1,6 @@
 /* date = December 6th 2025 2:34 pm */
 
-#ifndef OS_H
+#if !defined(OS_H)
 #define OS_H
 
 //~ Types
@@ -56,7 +56,7 @@ internal void OS_ProfileAndPrint(char *Label);
 #define ErrorLog(Format, ...) Log(ERROR_FMT Format "\n", ERROR_ARG, ##__VA_ARGS__)
 
 //- Helpers 
-#ifndef RL_PROFILE
+#if !defined(RL_PROFILE)
 # define RL_PROFILE 0
 #endif
 

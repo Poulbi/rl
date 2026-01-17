@@ -1,6 +1,6 @@
 /* date = December 6th 2025 3:00 am */
 
-#ifndef LANES_H
+#if !defined(LANES_H)
 #define LANES_H
 
 #include "base_arenas.h"
