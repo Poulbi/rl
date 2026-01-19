@@ -1,6 +1,3 @@
-//Copyright (c) 2011-2020 <>< Charles Lohr - Under the MIT/x11 or NewBSD License you choose.
-// NO WARRANTY! NO GUARANTEE OF SUPPORT! USE AT YOUR OWN RISK
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -9,7 +6,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
-#define BASE_NO_ENTRYPOINT 1
+#define RL_BASE_NO_ENTRYPOINT 1
 #include "base/base.h"
 
 NO_WARNINGS_BEGIN
@@ -30,7 +27,8 @@ NO_WARNINGS_BEGIN
 
 NO_WARNINGS_END
 
-#include "rld_libs.h"
+// #define EX_SLOW_COMPILE 1
+// #include "ex_libs.h"
 
 //~ Types
 typedef GLuint gl_handle;
@@ -43,6 +41,7 @@ typedef struct android_app android_app;
 #define SHOW_DEBUG_INFO 0
 
 //~ Globals 
+
 // Sensors
 global_variable ASensorManager *SensorManager;
 global_variable const ASensor *AccelerometerSensor;
@@ -69,11 +68,11 @@ global_variable int LastMask;
 global_variable int LastKey;
 global_variable int LastKeyDown;
 
-static int KeyboardUp;
-u8 ButtonState[8];
+global_variable int KeyboardUp;
+global_variable u8 ButtonState[8];
 
-volatile b32 GlobalRunning;
-volatile int Suspended;
+global_variable volatile b32 *GlobalRunning;
+global_variable volatile int Suspended;
 
 //~ External
 
@@ -81,7 +80,15 @@ extern android_app *gapp;
 
 extern void AndroidDisplayKeyboard(int pShow);
 
+//~ Types
+typedef struct android_context android_context;
+struct android_context
+{
+    umm FrameIdx;
+};
+
 //~ Functions
+UPDATE_AND_RENDER(UpdateAndRender);
 
 void SetupIMU()
 {
@@ -139,7 +146,7 @@ void HandleKey(int Keycode, int IsDown)
 
 void HandleButton(int X, int Y, int Button, int IsDown)
 {
-	ButtonState[Button] = IsDown;
+	ButtonState[Button] = (u8)IsDown;
 	LastButtonId = Button;
 	LastButtonX = X;
 	LastButtonY = Y;
@@ -212,13 +219,14 @@ void AudioCallback(struct CNFADriver *SoundDriver, short *Output, short *Input, 
             AudioFrequency = 440;
             for EachIndexType(smm, Index, FramesPending)
             {
-                s16 Sample = INT16_MAX *sin(AudioFrequency*(2*M_PI)*(StreamOffset+Index)/SAMPLE_RATE);
+                s16 Sample = INT16_MAX * (s16)(sin(AudioFrequency*(2*M_PI)*(f64)(StreamOffset+Index)/SAMPLE_RATE));
                 Output[Index] = Sample;
             }
             StreamOffset += FramesPending;
         }
     }
 }
+
 void MakeNotification(const char *channelID, const char *channelName, const char *title, const char *message)
 {
 	static int id;
@@ -286,265 +294,83 @@ void MakeNotification(const char *channelID, const char *channelName, const char
 	env->DeleteLocalRef(ENVCALL notificationServiceName);
 }
 
-//- Entrypoint 
 
-#include "app.c"
+//~ API
 
-int 
-main(int ArgsCount, char *Args[])
+internal P_context 
+P_ContextInit(arena *Arena, app_offscreen_buffer *Buffer, b32 *Running)
 {
-    short ScreenWidth, ScreenHeight;
-    u32 Frames = 0;
-    u32 FrameIdx = 0;
+    android_context *Context = PushStruct(Arena, android_context);
     
-    double ThisTime;
-    double LastFPSTime = OGGetAbsoluteTime();
-    
-    Log("Starting Up");
+    GlobalRunning = Running;
     
     CNFGBGColor = 0x000040ff;
-    CNFGSetupFullscreen("Test Bench", 0);
+    CNFGSetupFullscreen("Handmade Window", 0);
     HandleWindowTermination = HandleThisWindowTermination;
     
     SetupIMU();
-    InitCNFAAndroid(AudioCallback, "A Name", SAMPLE_RATE, 0, 1, 0, SAMPLE_COUNT, 0, 0, 0);
+    InitCNFAAndroid(AudioCallback, "Handmade AudioCallback", SAMPLE_RATE, 0, 1, 0, SAMPLE_COUNT, 0, 0, 0);
     
-    Log("#### Startup Complete ####\n");
+    short ScreenWidth, ScreenHeight;
+    CNFGGetDimensions(&ScreenWidth, &ScreenHeight);
+    Buffer->Width = ScreenWidth;
+    Buffer->Height = ScreenHeight;
+    Buffer->BytesPerPixel = 4;
+    Buffer->Pitch = (Buffer->BytesPerPixel*Buffer->Width);
+    // NOTE(luca): Allocate enough memory to handle if the buffer got resized to something bigger.
+    Buffer->Pixels = PushArray(Arena, u8, MB(32));
     
-    arena *PermanentArena = ArenaAlloc();
-    arena *FrameArena = ArenaAlloc();
+    printf("### Setup Completed ###\n");
     
-    umm FrameArenaBackPos = BeginScratch(FrameArena);
-    
-    android_app *AndroidApp = gapp;
-    
-#if !SHOW_DEBUG_INFO    
-    gl_handle ShaderProgram; 
-    {
-        str8 InfoLog = {0};
-        InfoLog.Size = KB(2);
-        InfoLog.Data = PushArray(FrameArena, u8, InfoLog.Size);
-        
-        gl_handle VertexShader, FragmentShader;
-        VertexShader = CompileShaderFromAsset(AndroidApp, FrameArena, InfoLog, 
-                                              "vert.glsl", GL_VERTEX_SHADER); 
-        FragmentShader = CompileShaderFromAsset(AndroidApp, FrameArena, InfoLog, 
-                                                "frag.glsl", GL_FRAGMENT_SHADER); 
-        
-        ShaderProgram = glCreateProgram();
-        glAttachShader(ShaderProgram, VertexShader);
-        glAttachShader(ShaderProgram, FragmentShader);
-        glLinkProgram(ShaderProgram);
-        GLErrorStatus(ShaderProgram, InfoLog, false);
-        glDeleteShader(FragmentShader); 
-        glDeleteShader(VertexShader);
-    }
-    
-    gl_handle VAO, VBO[2], Tex;
-    gl_handle PosAttrib, TexAttrib, UOffset, UAngle, UColor;
-    {    
-        glGenVertexArrays(1, &VAO); 
-        glGenBuffers(2, &VBO[0]);  
-        glGenTextures(1, &Tex);
-        
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
-        
-        PosAttrib = glGetAttribLocation(ShaderProgram, "pos");
-        glEnableVertexAttribArray(PosAttrib);
-        glVertexAttribPointer(PosAttrib, 3, GL_FLOAT, GL_FALSE, sizeof(v3), 0);
-        
-        TexAttrib = glGetAttribLocation(ShaderProgram, "tex");
-        glEnableVertexAttribArray(TexAttrib);
-        glVertexAttribPointer(TexAttrib, 2, GL_FLOAT, GL_FALSE, sizeof(v2), 0);
-        
-        UOffset = glGetUniformLocation(ShaderProgram, "offset");
-        UAngle = glGetUniformLocation(ShaderProgram, "angle");
-        UColor = glGetUniformLocation(ShaderProgram, "color");
-    }
-#endif
-    
-    //~ 
-    str8 AssetText = GetAsset(AndroidApp, "asset.txt");
-    
-    load_obj_result Model = LoadObj(PermanentArena, gapp, "bonhomme.obj");
-    
-    app_state App = {0};
-    App.Angle.Z = 3.0f;
-    
-    GlobalRunning = true;
-    
-    int PreviousButtonX = 0;
-    int PreviousButtonY = 0;
-    
-    while(GlobalRunning)
-    {
-        EndScratch(FrameArena, FrameArenaBackPos);
-        
-        FrameIdx++;
-        
-#if 0        
-        if(FrameIdx == 200)
-        {
-            MakeNotification("default", "rldroid alerts", "rldroid", "Hit frame two hundred\nNew Line");
-        }
-#endif
-        
-        CNFGHandleInput();
-        AccCheck();
-        
-        if(!Suspended)
-        {
-            CNFGClearFrame();
-            CNFGGetDimensions(&ScreenWidth, &ScreenHeight);
-            CNFGFlushRender();
-            
-            // Input
-            {
-                local_persist b32 IsDragging = false;
-                
-                if(ButtonState[0])
-                {
-                    f32 Movement;
-                    if(IsDragging)
-                    {
-                        Movement = ((f32)(LastMotionX - PreviousButtonX)/(f32)ScreenWidth);
-                        PreviousButtonX = LastMotionX;
-                    }
-                    else
-                    {
-                        // No movement on first tap
-                        Movement = 0.0f;
-                        LastMotionX = LastButtonX;
-                        PreviousButtonX = LastButtonX;
-                    }
-                    
-                    App.Offset.X += Movement*4.0f;
-                }
-                
-                // Update drag state
-                if(!ButtonState[0])
-                {
-                    IsDragging = false;
-                }
-                
-                if(ButtonState[0] && !IsDragging)
-                {
-                    IsDragging = true;
-                }
-                
-            }
-            
-#if !SHOW_DEBUG_INFO            
-            glBindVertexArray(VAO);
-            
-            glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(v3)*Model.Count, Model.Vertices, GL_STATIC_DRAW);
-            
-            glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(v2)*Model.Count, Model.TexCoords, GL_STATIC_DRAW);
-            
-            glUseProgram(ShaderProgram);
-            
-            glUniform2f(UAngle, App.Offset.X, App.Offset.Y);
-            glUniform3f(UOffset, App.Angle.X, App.Angle.Y, App.Angle.Z);
-            glUniform3f(UColor, 1.0f, 0.5f, 0.0f);
-            
-            // Load texture
-            {            
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, Tex);
-                
-                local_persist int Width, Height, Components;
-                local_persist u8 *Image = 0;
-                if(!Image)
-                {
-                    str8 ImageFile = GetAsset(AndroidApp,"bonhomme.png");
-                    Image = stbi_load_from_memory(ImageFile.Data, ImageFile.Size, &Width, &Height, &Components, 0);
-                }
-                
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Image);
-                glUniform1i(glGetUniformLocation(ShaderProgram, "Texture"), 0);
-                
-#if 0                
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-                // TODO(luca): Use mipmap
-#endif
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-#if 0
-                f32 Color[] = { 1.0f, 0.0f, 0.0f, 1.0f };
-                glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, Color);
-#endif
-            }
-            
-#if 0            
-            b32 Fill = true;
-            s32 Mode = (Fill) ? GL_FILL : GL_LINE;
-            glPolygonMode(GL_FRONT_AND_BACK, Mode);
-#endif
-            
-            glViewport(0, 0, ScreenWidth, ScreenHeight);
-            
-#if 0
-            glEnable(GL_DEPTH_TEST);
-            GLErrorInfo("glEnable");
-#endif
-            
-            glClearColor(1.0f, 0.2f, 0.2f, 0.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            
-            glDrawArrays(GL_TRIANGLES, 0, Model.Count);
-            GLErrorInfo("Check");
-#endif
-            
-#if SHOW_DEBUG_INFO            
-            // Debug Info
-            {
-                CNFGColor(0xFFFFFFFF);
-                CNFGPenX = 0; CNFGPenY = 400;
-                char *TextToDraw = PushArray(FrameArena, char, AssetText.Size + 1);
-                memcpy(TextToDraw, AssetText.Data, AssetText.Size);
-                TextToDraw[AssetText.Size] = 0;
-                CNFGDrawText(TextToDraw, 15);
-                
-                CNFGColor(0xFFFFFFFF);
-                CNFGPenX = 0; CNFGPenY = 480;
-                char *StatusText = PushArray(FrameArena, char, 255);
-                sprintf(StatusText, 
-                        "%dx%d %d %d %d %d %d %d\n"
-                        "%d %d\n"
-                        "%5.2f %5.2f %5.2f %d\n"
-                        "%.2f"
-                        ,
-                        ScreenWidth, ScreenHeight, LastButtonX, LastButtonY, LastMotionX, LastMotionY, LastKey, LastKeyDown, 
-                        LastButtonId, LastMask, AccelerometerX, AccelerometerY, AccelerometerZ, AccelerometerSamples,
-                        App.Offset.X);
-                
-                
-                CNFGDrawText(StatusText, 10);
-            }
-#endif
-            
-            Frames++;
-            CNFGSwapBuffers();
-            
-            ThisTime = OGGetAbsoluteTime();
-            if(ThisTime > LastFPSTime + 1)
-            {
-                Log("FPS: %d\n", Frames);
-                Frames = 0;
-                LastFPSTime+=1;
-            }
-            
-        }
-        else
-        { 
-            usleep(50000);
-        }
-        
-    }
-    
-    return 0;
+    return (P_context)Context;
 }
+
+internal void      
+P_UpdateImage(P_context Context, app_offscreen_buffer *Buffer)
+{
+    CNFGSwapBuffers();
+}
+
+internal void      
+P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buffer, b32 *Running)
+{
+    android_context *Android = (android_context *)Context;
+    
+    Android->FrameIdx += 1;
+    
+#if 0    
+    if(Android->FrameIdx == 200)
+    {
+        MakeNotification("default", "example_droid alerts", "rldroid", "Hit frame two hundred\nNew Line");
+    }
+#endif
+    
+    CNFGHandleInput();
+    AccCheck();
+    
+    Input->MouseX = LastMotionX;
+    Input->MouseY = LastMotionY;
+    
+    short ScreenWidth, ScreenHeight;
+    CNFGGetDimensions(&ScreenWidth, &ScreenHeight);
+    Buffer->Width = ScreenWidth;
+    Buffer->Height = ScreenHeight;
+    Buffer->BytesPerPixel = 4;
+    Buffer->Pitch = (Buffer->BytesPerPixel*Buffer->Width);
+    
+    if(Suspended)
+    {
+        usleep(50000);
+    }
+    
+    CNFGClearFrame();
+    CNFGFlushRender();
+}
+
+internal void      
+P_LoadAppCode(arena *Arena, app_code *Code, app_memory *Memory, s64 *LastWriteTime)
+{
+    Code->UpdateAndRender = UpdateAndRender;
+}
+
+#include "ex_app.c"

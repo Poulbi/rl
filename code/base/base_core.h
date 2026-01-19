@@ -99,7 +99,13 @@ Swap(type& A, type& B) { type T = A; A = B; B = T; }
 //- 
 #define NoOp ((void)0)
 
-#if OS_LINUX
+#if LANG_C
+# define ZeroStruct {0}
+#elif LANG_CPP
+# define ZeroStruct {}
+#endif
+
+#if OS_LINUX || OS_ANDROID
 # define OS_SlashChar '/'
 # define SLASH "/"
 #elif OS_WINDOWS
@@ -121,7 +127,7 @@ Swap(type& A, type& B) { type T = A; A = B; B = T; }
 # define ReadWriteBarrier __asm__ __volatile__ ("" : : : "memory")
 #endif
 
-#if OS_LINUX
+#if OS_LINUX || OS_ANDROID
 # define DebugBreak do { if(GlobalDebuggerIsAttached) __asm__ volatile("int3"); } while(0)
 #elif OS_WINDOWS
 # define DebugBreak do { if(GlobalDebuggerIsAttached) Trap(); } while(0)

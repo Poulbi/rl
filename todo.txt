@@ -1,5 +1,4 @@
 Example App
-- Android platform layer
 - Buttons
   - animate button clicks
   - different color when button is for the selected model
@@ -30,6 +29,7 @@ Example App
 - Linux platform:
   - for input events, make sure we only get one event per frame.
   - loop editing
+- VSync
 
 Misc
 - metadesk for build targets
@@ -52,3 +52,4 @@ x Investigate button drawing performance.
   - Font rasterizing is taking up most of the time.
 x Path from exe -> simplify
 x adress sanitizer for arena's
+x Android platform layer

@@ -5,15 +5,6 @@ struct app_state
     v3 Offset;
 };
 
-typedef struct app_offscreen_buffer app_offscreen_buffer;
-struct app_offscreen_buffer
-{
-    u8 *Pixels;
-    s32 Width, Height;
-    s32 BytesPerPixel;
-    s32 Pitch;
-};
-
 typedef s32 face[4][3];
 #define New(type, Name, Array, Count) type *Name = Array + Count; Count += 1;
 
@@ -68,12 +59,12 @@ GLErrorStatus(gl_handle Handle, str8 InfoLog, b32 IsShader)
     if(IsShader)
     {
         glGetShaderiv(Handle, GL_COMPILE_STATUS, &Succeeded);
-        glGetShaderInfoLog(Handle, InfoLog.Size, NULL, (char *)InfoLog.Data);
+        glGetShaderInfoLog(Handle, (GLsizei)InfoLog.Size, NULL, (char *)InfoLog.Data);
     }
     else
     {
         glGetProgramiv(Handle, GL_LINK_STATUS, &Succeeded);
-        glGetProgramInfoLog(Handle, InfoLog.Size, NULL, (char *)InfoLog.Data);
+        glGetProgramInfoLog(Handle, (GLsizei)InfoLog.Size, NULL, (char *)InfoLog.Data);
     }
     
     if(!Succeeded)
@@ -196,11 +187,11 @@ ParseFloat(str8 Inner, umm *Cursor)
 }
 
 internal load_obj_result
-LoadObj(arena *Arena, android_app *AndroidApp, char *FileName)
+LoadObj(arena *Arena, android_app *AndroidApp, str8 File)
 {
     load_obj_result Result = {0};
     
-    str8 In = GetAsset(AndroidApp, FileName);
+    str8 In = File;
     
     s32 InVerticesCount = 0;
     s32 InTexCoordsCount = 0;
@@ -331,4 +322,25 @@ LoadObj(arena *Arena, android_app *AndroidApp, char *FileName)
     }
     
     return Result;
+}
+
+UPDATE_AND_RENDER(UpdateAndRender)
+{
+    b32 ShouldQuit = false;
+    
+    if(!Memory->Initialized)
+    {
+        Memory->AppState = PushStruct(PermanentArena, app_state);
+        Memory->Initialized = true;
+    }
+    
+    app_state *App = (app_state *)Memory->AppState;
+    
+    glViewport(0, 0, Buffer->Width, Buffer->Height);
+    
+    f32 Red = (f32)Input->MouseY/(f32)Buffer->Height;
+    glClearColor(Red, Red, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    return ShouldQuit;
 }

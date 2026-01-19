@@ -38,7 +38,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         str8 ExeDirPath = {};
         {        
             u32 OnePastLastSlash = 0;
-#if OS_LINUX
+#if OS_LINUX || OS_ANDROID
             char *FileName = Params->Args[0];
             u32 SizeOfFileName = (u32)StringLength(FileName);
 #elif OS_WINDOWS
@@ -55,7 +55,6 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                     OnePastLastSlash = (u32)Idx + 1;
                 }
             }
-            
             
             ExeDirPath.Data = (u8 *)FileName;
             ExeDirPath.Size = OnePastLastSlash;
@@ -82,16 +81,13 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         
         app_code Code = {};
         
-        s64 LastWriteTime = {};
-#if OS_LINUX        
-        Code.LibraryPath = PathFromExe(PermanentArena, AppMemory.ExeDirPath, S8("ex_app.so"));
-        void *LinuxLibraryHandle = 0;
-        Code.LibraryHandle = (umm)LinuxLibraryHandle;
+        s64 LastWriteTime = ZeroStruct;
+#if OS_LINUX || OS_ANDROID        
+        str8 LibraryPath = S8("ex_app.so");
 #else
-        Code.LibraryPath = PathFromExe(PermanentArena, AppMemory.ExeDirPath, S8("ex_app.dll"));
-        HMODULE Win32LibraryHandle = 0;
-        Code.LibraryHandle = (umm)Win32LibraryHandle;
+        str8 LibraryPath = S8("ex_app.dll");
 #endif
+        Code.LibraryPath = PathFromExe(PermanentArena, AppMemory.ExeDirPath, LibraryPath);
         
         b32 Paused = false;
         
@@ -187,8 +183,12 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             
             OS_ProfileAndPrint("Sleep");
             
+            
+            u8 Codepoint = (u8)NewInput->Text.Buffer[0].Codepoint;
+            
             Log("'%c' (%d, %d) 1:%c 2:%c 3:%c", 
-                (u8)NewInput->Text.Buffer[0].Codepoint,
+                ((Codepoint == 0) ?
+                 '\a' : Codepoint),
                 NewInput->MouseX, NewInput->MouseY,
                 (NewInput->Buttons[PlatformButton_Left  ].EndedDown ? 'x' : 'o'),
                 (NewInput->Buttons[PlatformButton_Middle].EndedDown ? 'x' : 'o'),

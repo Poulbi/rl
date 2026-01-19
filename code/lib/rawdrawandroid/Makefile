@@ -3,26 +3,25 @@
 
 all : makecapk.apk
 
-.PHONY : push run keystore
+.PHONY : push run
 
 # WARNING WARNING WARNING!  YOU ABSOLUTELY MUST OVERRIDE THE PROJECT NAME
 # you should also override these parameters, get your own signatre file and make your own manifest.
-APPNAME?=rldroid
+APPNAME?=cnfgtest
 LABEL?=$(APPNAME)
 APKFILE ?= $(APPNAME).apk
-PACKAGENAME?=com.keyfried.$(APPNAME)
+PACKAGENAME?=org.yourorg.$(APPNAME)
 RAWDRAWANDROID?=.
 RAWDRAWANDROIDSRCS=$(RAWDRAWANDROID)/android_native_app_glue.c
-SRC?=../../rldroid/rld_platform.c
-BUILD_DIR?=../../../build
-SOURCES=../../../data/rldroid
+SRC?=test.c
+BUILD_DIR?=.
 
 #We've tested it with android version 22, 24, 28, 29, 30, 32 and 34.
 #You can target something like Android 28, but if you set ANDROIDVERSION to say 22, then
 #Your app should (though not necessarily) support all the way back to Android 22.
 ANDROIDVERSION?=30
 ANDROIDTARGET?=$(ANDROIDVERSION)
-CFLAGS?=-ffunction-sections -fdata-sections -Wall -fvisibility=hidden
+CFLAGS?=-ffunction-sections -Os -fdata-sections -Wall -fvisibility=hidden
 LDFLAGS?=-Wl,--gc-sections -Wl,-Map=$(BUILD_DIR)/output.map -s
 ANDROID_FULLSCREEN?=y
 ADB?=adb
@@ -96,18 +95,11 @@ testsdk :
 	@echo "NDK:\t\t" $(NDK)
 	@echo "Build Tools:\t" $(BUILD_TOOLS)
 
-CFLAGS+=-g -DANDROID -DAPPNAME=\"$(APPNAME)\"
+CFLAGS+=-Os -DANDROID -DAPPNAME=\"$(APPNAME)\"
 ifeq (ANDROID_FULLSCREEN,y)
 CFLAGS +=-DANDROID_FULLSCREEN
 endif
-
-#Personal flags
-
-CFLAGS+= -I../..
-CFLAGS+= -fdiagnostics-absolute-paths -Wall -Wextra 
-CFLAGS+= -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable -Wno-visibility -Wno-unused-parameter -Wno-deprecated-declarations -Wno-sign-compare -Wno-implicit-int -Wno-incompatible-pointer-types-discards-qualifiers
-
-CFLAGS+= -I$(RAWDRAWANDROID)/rawdraw -I$(NDK)/sysroot/usr/include -I$(NDK)/sysroot/usr/include/android -I$(NDK)/toolchains/llvm/prebuilt/$(OS_NAME)/sysroot/usr/include -I$(NDK)/toolchains/llvm/prebuilt/$(OS_NAME)//sysroot/usr/include/android -fPIC -I$(RAWDRAWANDROID) -DANDROIDVERSION=$(ANDROIDVERSION)
+CFLAGS+= -I$(RAWDRAWANDROID)/rawdraw -I$(NDK)/sysroot/usr/include -I$(NDK)/sysroot/usr/include/android -I$(NDK)/toolchains/llvm/prebuilt/$(OS_NAME)/sysroot/usr/include -I$(NDK)/toolchains/llvm/prebuilt/$(OS_NAME)/sysroot/usr/include/android -fPIC -I$(RAWDRAWANDROID) -DANDROIDVERSION=$(ANDROIDVERSION)
 LDFLAGS += -lm -lGLESv3 -lEGL -landroid -llog -lOpenSLES
 LDFLAGS += -shared -uANativeActivity_onCreate
 
@@ -130,11 +122,13 @@ CFLAGS_ARM32:=-mfloat-abi=softfp -m32
 CFLAGS_x86:=-march=i686 -mssse3 -mfpmath=sse -m32
 CFLAGS_x86_64:=-march=x86-64 -msse4.2 -mpopcnt -m64
 STOREPASS?=password
-DNAME:="CN=keyfried.com, OU=ID, O=Example, L=Luca, S=Raymaekers, C=BE"
+DNAME:="CN=example.com, OU=ID, O=Example, L=Doe, S=John, C=GB"
 KEYSTOREFILE:=my-release-key.keystore
 ALIASNAME?=standkey
 
-keystore:
+keystore : $(KEYSTOREFILE)
+
+$(KEYSTOREFILE) :
 	keytool -genkey -v -keystore $(KEYSTOREFILE) -alias $(ALIASNAME) -keyalg RSA -keysize 2048 -validity 10000 -storepass $(STOREPASS) -keypass $(STOREPASS) -dname $(DNAME)
 
 folders:
@@ -180,9 +174,9 @@ $(BUILD_DIR)/makecapk/lib/x86_64/lib$(APPNAME).so : $(ANDROIDSRCS)
 
 makecapk.apk : $(TARGETS) $(EXTRA_ASSETS_TRIGGER) $(BUILD_DIR)/AndroidManifest.xml $(KEYSTOREFILE)
 	mkdir -p $(BUILD_DIR)/makecapk/assets
-	cp -r $(SOURCES)/assets/* $(BUILD_DIR)/makecapk/assets
+	cp -r Sources/assets/* $(BUILD_DIR)/makecapk/assets
 	rm -rf $(BUILD_DIR)/temp.apk
-	$(AAPT) package -f -F $(BUILD_DIR)/temp.apk -I $(ANDROID_JAR) -M $(BUILD_DIR)/AndroidManifest.xml -S $(SOURCES)/res -A $(BUILD_DIR)/makecapk/assets -v --target-sdk-version $(ANDROIDTARGET)
+	$(AAPT) package -f -F $(BUILD_DIR)/temp.apk -I $(ANDROID_JAR) -M $(BUILD_DIR)/AndroidManifest.xml -S Sources/res -A $(BUILD_DIR)/makecapk/assets -v --target-sdk-version $(ANDROIDTARGET)
 	unzip -o $(BUILD_DIR)/temp.apk -d $(BUILD_DIR)/makecapk
 	rm -rf $(BUILD_DIR)/makecapk.apk
 	# We use -4 here for the compression ratio, as it's a good balance of speed and size. -9 will make a slightly smaller executable but takes longer to build
@@ -195,6 +189,7 @@ makecapk.apk : $(TARGETS) $(EXTRA_ASSETS_TRIGGER) $(BUILD_DIR)/AndroidManifest.x
 	$(BUILD_TOOLS)/apksigner sign --key-pass pass:$(STOREPASS) --ks-pass pass:$(STOREPASS) --ks $(KEYSTOREFILE) $(BUILD_DIR)/$(APKFILE)
 	rm -rf $(BUILD_DIR)/temp.apk
 	rm -rf $(BUILD_DIR)/makecapk.apk
+	@ls -l $(BUILD_DIR)/$(APKFILE)
 
 manifest: $(BUILD_DIR)/AndroidManifest.xml
 

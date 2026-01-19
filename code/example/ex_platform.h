@@ -5,6 +5,7 @@
 
 #include "ex_random.h"
 
+typedef struct app_offscreen_buffer app_offscreen_buffer;
 struct app_offscreen_buffer
 {
     s32 Width;
@@ -197,15 +198,14 @@ PathFromExe(arena *Arena, str8 ExeDirPath, str8 Path)
 {
     char *Result = 0;
     
-    str8 Base = ExeDirPath;
-    umm Size = Base.Size + Path.Size + 1;
+    umm Size = ExeDirPath.Size + Path.Size + 1;
     
     Result = PushArray(Arena, char, Size);
     
     umm At = 0;
-    for EachIndex(Idx, Base.Size)
+    for EachIndex(Idx, ExeDirPath.Size)
     {
-        Result[At] = Base.Data[Idx];
+        Result[At] = ExeDirPath.Data[Idx];
         At += 1;
     }
     for EachIndex(Idx, Path.Size)

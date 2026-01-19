@@ -62,7 +62,7 @@ OS_ReadEntireFileIntoMemory(char *FileName)
             int Error = fstat(File, &StatBuffer);
             AssertErrno(Error != -1);
             
-            Result.Size = StatBuffer.st_size;
+            Result.Size = (umm)StatBuffer.st_size;
             
             if(Result.Size != 0)
             {                
@@ -120,11 +120,14 @@ OS_PrintFormat(char *Format, ...)
 {
     va_list Args;
     va_start(Args, Format);
-    
+#if 0 
     // TODO(luca): stb_sprintf would be nice, but takes long time to compile.
     int Length = vsprintf((char *)LogBuffer, Format, Args);
     smm BytesWritten = write(STDOUT_FILENO, LogBuffer, Length);
     AssertErrno(BytesWritten == Length);
+#else
+    vprintf(Format, Args);
+#endif
 }
 
 //~ Threads
@@ -331,10 +334,26 @@ LinuxMainEntryPoint(int ArgsCount, char **Args)
     
 }
 
+internal void 
+AndroidMainEntryPoint(int ArgsCount, char **Args)
+{
+    entry_point_params Params = {0};
+    Params.ArgsCount = ArgsCount;
+    Params.Args = Args;
+    Params.Context.LaneIdx = 0;
+    Params.Context.LaneCount = 1;
+    
+    ThreadInitEntryPoint(&Params);
+}
+
 #if !RL_BASE_NO_ENTRYPOINT
 int main(int ArgsCount, char **Args)
 {
+#if OS_ANDROID
+    AndroidMainEntryPoint(ArgsCount, Args);
+#else
     LinuxMainEntryPoint(ArgsCount, Args);
+#endif
     return 0;
 }
 #endif

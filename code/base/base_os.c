@@ -1,4 +1,4 @@
-#if OS_LINUX
+#if OS_LINUX || OS_ANDROID
 # include "base_os_linux.c"
 #elif OS_WINDOWS
 # include "base_os_windows.c"

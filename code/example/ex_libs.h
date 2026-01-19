@@ -1,5 +1,5 @@
-#ifndef RL_LIBS_H
-#define RL_LIBS_H
+#ifndef EX_LIBS_H
+#define EX_LIBS_H
 
 #include "base/base_core.h"
 
@@ -44,4 +44,4 @@ void GLADEnableCallbacks()
 C_LINKAGE_END
 #endif // EX_SLOW_COMPILE
 
-#endif // RL_LIBS_H
+#endif // EX_LIBS_H

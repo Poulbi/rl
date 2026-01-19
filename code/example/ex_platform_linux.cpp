@@ -23,6 +23,7 @@ typedef GLXContext (*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXC
 
 #include "base/base_os_linux_x11_keysyms.c"
 
+typedef struct linux_x11_context linux_x11_context;
 struct linux_x11_context
 {
     XImage *WindowImage;

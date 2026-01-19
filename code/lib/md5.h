@@ -33,7 +33,9 @@ static inline void md5_finish(md5_ctx* ctx, uint8_t digest[MD5_DIGEST_SIZE]);
 #if defined(__clang__)
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Wcast-align"
+#if !OS_ANDROID
 #   pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
+#endif
 #   pragma clang diagnostic ignored "-Wlanguage-extension-token"
 #   pragma clang diagnostic ignored "-Wdeclaration-after-statement"
 #endif

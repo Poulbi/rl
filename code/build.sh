@@ -231,7 +231,7 @@ then
  if [ "$droid" = 1 ]
  then
   cd ./lib/rawdrawandroid/
-  make -B -f ../../example/droid/TestMakefile push run
+  make -f ../../example/droid/Makefile push run
   DidWork=1
  fi
 fi
