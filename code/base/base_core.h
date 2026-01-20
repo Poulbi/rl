@@ -114,7 +114,7 @@ Swap(type& A, type& B) { type T = A; A = B; B = T; }
 #endif
 
 #if (COMPILER_CLANG || COMPILER_GNU)
-# define Trap() __builtin_trap();
+# define Trap() __asm__ volatile("int3");
 #elif COMPILER_MSVC
 # define Trap() __debugbreak();
 #else
@@ -127,11 +127,7 @@ Swap(type& A, type& B) { type T = A; A = B; B = T; }
 # define ReadWriteBarrier __asm__ __volatile__ ("" : : : "memory")
 #endif
 
-#if OS_LINUX || OS_ANDROID
-# define DebugBreak do { if(GlobalDebuggerIsAttached) __asm__ volatile("int3"); } while(0)
-#elif OS_WINDOWS
-# define DebugBreak do { if(GlobalDebuggerIsAttached) Trap(); } while(0)
-#endif
+#define DebugBreak do { if(GlobalDebuggerIsAttached) Trap(); } while(0)
 #define DebugBreakOnce do { local_persist b32 X = true; if(X) DebugBreak; X = false; } while(0)
 
 # define TrapMsg(Format, ...) do { ErrorLog(Format, ##__VA_ARGS__); Trap(); } while(0)

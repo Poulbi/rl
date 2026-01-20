@@ -24,6 +24,7 @@ hash=0
 nieuw=0
 samples=0
 cuversine=0
+zcdp=0
 
 example=0
 app=0
@@ -34,10 +35,10 @@ droid=0
 
 cling=0
 rldroid=0
-Targets="hash/samples/cling/rldroid/cuversine/example [sort/app/gl/windows/droid]"
+Targets="hash/samples/cling/rldroid/cuversine/zcdp/example [sort/app/gl/windows/droid]"
 
 # Default
-[ "$#" = 0 ] && example=1 && droid=1
+[ "$#" = 0 ] && zcdp=1
 
 for Arg in "$@"; do eval "$Arg=1"; done
 # Exclusive flags
@@ -251,6 +252,9 @@ then
  make -B push run
  DidWork=1
 fi
+
+[ "$zcdp" = 1 ] && C_Compile $(Strip ./zcdp/zcdp.c)
+[ "$zcdp" = 1 ] && C_Compile $(Strip ./zcdp/client.c)
 
 #- End
 
