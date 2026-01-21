@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <poll.h>
 
 #define RL_BASE_NO_ENTRYPOINT 1
 #include "base/base.h"
@@ -15,10 +16,6 @@ main(int ArgsCount, char **Args)
 {
     int MaxConnections = 64;
     u16 Port = 2600;
-    
-    b32 ServerMode = true;
-    
-    if(ArgsCount > 1) ServerMode = false;
     
     random_series Series;
     RandomSeed(&Series, (u64)OS_GetWallClock());
@@ -89,21 +86,19 @@ main(int ArgsCount, char **Args)
     // Start listening on the socket
     {
         s32 Result = 0;
-        Server.Handle = socket(AF_INET, SOCK_DGRAM|SOCK_NONBLOCK, 0);
-        Assert(Server.Handle > 2);
+        Server.Handle = socket(AF_INET, SOCK_DGRAM, 0);
+        AssertErrno(Server.Handle != -1);
         
         // Set socket options
         {
+            u32 Off = 0;
             u32 On = 1;
             Result = setsockopt(Server.Handle, SOL_SOCKET, SO_REUSEADDR, &On, sizeof(On));
             AssertErrno(Result == 0);
             Result = setsockopt(Server.Handle, SOL_SOCKET, SO_REUSEPORT, &On, sizeof(On));
             AssertErrno(Result == 0);
-#if 0
-            Result = setsockopt(Server.Handle, IPPROTO_IP, IP_MULTICAST_LOOP, &On, sizeof(On));
+            Result = setsockopt(Server.Handle, IPPROTO_IP, IP_MULTICAST_LOOP, &Off, sizeof(Off));
             AssertErrno(Result == 0);
-#endif
-            
             
             struct ip_mreq Group1;
             Group1.imr_multiaddr.s_addr = inet_addr("224.0.0.26");
@@ -130,86 +125,109 @@ main(int ArgsCount, char **Args)
     str8 UUIDBuffer = UUIDtoStr8(Arena, &ClientUUID);
     Log("Started(" S8Fmt ")\n", S8Arg(UUIDBuffer));
     
-    b32 Skip = true;
+    service *ServiceOffset = Services + RandomChoice(&Series, ArrayCount(Services) - 2);
+    Log(" Services:\n");
+    for EachIndex(Idx, 3)
+    {
+        Log(" - " S8Fmt "\n", S8Arg(ServiceOffset[Idx].Name));
+    }
+    
+    struct pollfd PollFD = {0};
+    PollFD.events = POLLIN;
+    PollFD.fd = Server.Handle;
     
     b32 Running = true;
     while(Running)
     { 
         
-        smm BytesReceived = 0;
-        
-        if(ServerMode)
-        {        
+        int Error = poll(&PollFD, 1, 0);
+        if(PollFD.revents & POLLIN)
+        {
+            smm BytesReceived = 0;
             BytesReceived = recvfrom(Server.Handle, MessageBuffer.Data, MessageBuffer.Size,
                                      0, (struct sockaddr*)&ClientAddress, &SizeOfClientAddress);
-        }
-        
-        if(BytesReceived > 0)
-        {            
-            m_announce *Message = (m_announce *)MessageBuffer.Data;
             
-            switch(Message->Header.Type)
-            {
-                case m_TypeAnnounce:
-                {
-                    u8 *Data = MessageBuffer.Data + sizeof(m_announce);
-                    
-                    u8 TimestampBuffer[32] = {0};
-                    {                
-                        time_t Seconds = (time_t)(Message->Timestamp / 1000000000LL);
-                        
-                        // Convert to UTC time structure
-                        struct tm *TimeInfo = gmtime(&Seconds);
-                        
-                        // Format as ISO 8601: "YYYY-MM-DDTHH:MM:SSZ"
-                        strftime((char *)TimestampBuffer, sizeof(TimestampBuffer), "%Y-%m-%dT%H:%M:%SZ", TimeInfo);
-                    }
-                    
-                    Log("Received(%s:%d):\n"
-                        " Timestamp: %s\n"
-                        " UUID: " S8Fmt "\n"
-                        , 
-                        inet_ntoa(ClientAddress.sin_addr), ntohs(ClientAddress.sin_port),
-                        TimestampBuffer,
-                        S8Arg(UUIDBuffer));
-                    
-                    for EachIndex(Idx, Message->ServicesCount)
+            if(BytesReceived > 0)
+                
+            {            
+                m_header *Header = (m_header *)MessageBuffer.Data;
+                void *MessageData = (MessageBuffer.Data + sizeof(*Header));
+                
+                if(!(Header->PeerUUID.U64[0] == ClientUUID.U64[0] &&
+                     Header->PeerUUID.U64[1] == ClientUUID.U64[1]))
+                {                
+                    switch(Header->Type)
                     {
-                        if(Idx == 0)
+                        case m_TypeAnnounce:
                         {
-                            Log(" Services:\n");
-                        }
-                        
-                        str8 Service = {0};
-                        MemoryCopy(&Service.Size, Data, sizeof(Service.Size));
-                        Data += sizeof(Service.Size);
-                        
-                        Service.Data = PushArray(Arena, u8, Service.Size);
-                        
-                        MemoryCopy(Service.Data, Data, Service.Size);
-                        Data += Service.Size;
-                        
-                        Log(" - " S8Fmt "\n", S8Arg(Service));
+                            m_announce *Message = (m_announce *)MessageData;
+                            u8 *Data = (u8 *)MessageData + sizeof(*Message);
+                            
+                            u8 TimestampBuffer[32] = {0};
+                            {                
+                                time_t Seconds = (time_t)(Message->Timestamp / 1000000000LL);
+                                
+                                // Convert to UTC time structure
+                                struct tm *TimeInfo = gmtime(&Seconds);
+                                
+                                // Format as ISO 8601: "YYYY-MM-DDTHH:MM:SSZ"
+                                strftime((char *)TimestampBuffer, sizeof(TimestampBuffer), "%Y-%m-%dT%H:%M:%SZ", TimeInfo);
+                            }
+                            
+                            UUIDBuffer = UUIDtoStr8(Arena, &Header->PeerUUID);
+                            
+                            Log("Received(%s:%d):\n"
+                                " Timestamp: %s\n"
+                                " UUID: " S8Fmt "\n"
+                                , 
+                                inet_ntoa(ClientAddress.sin_addr), ntohs(ClientAddress.sin_port),
+                                TimestampBuffer,
+                                S8Arg(UUIDBuffer));
+                            
+                            for EachIndex(Idx, Message->ServicesCount)
+                            {
+                                if(Idx == 0)
+                                {
+                                    Log(" Services:\n");
+                                }
+                                
+                                str8 Service = {0};
+                                MemoryCopy(&Service.Size, Data, sizeof(Service.Size));
+                                Data += sizeof(Service.Size);
+                                
+                                Service.Data = PushArray(Arena, u8, Service.Size);
+                                
+                                MemoryCopy(Service.Data, Data, Service.Size);
+                                Data += Service.Size;
+                                
+                                Log(" - " S8Fmt "\n", S8Arg(Service));
+                            }
+                            
+                        } break;
+                        default:
+                        {
+                            Log("Unhandled message.\n");
+                        } break;
                     }
-                    
-                } break;
-                default:
+                }
+                else
                 {
-                    Log("Unhandled message.\n");
-                } break;
+                    Log("Received own message!\n");
+                }
+            }
+            else
+            {
+                Log("Failed to receive data.\n");
+                DebugBreak;
             }
         }
         
         // Announce every 10 seconds.
-        {
-            Log("Announcing...\n");
-            
-            service *ServiceOffset = Services + RandomChoice(&Series, ArrayCount(Services) - 1);
-            m_Announce(Server, MessageBuffer, ClientUUID, 2, ServiceOffset, &MessageID);
-            
-            OS_Sleep(1000*1000*3);
-        }
+        Log("Announcing...\n");
         
+        m_Announce(Server, MessageBuffer, ClientUUID, 3, ServiceOffset, &MessageID);
+        
+        OS_Sleep(1000*1000*3);
     }
     
     return 0;

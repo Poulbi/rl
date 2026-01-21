@@ -33,12 +33,12 @@ union u128
     u64 U64[2];
 };
 
-typedef enum m_type m_type;
 enum m_type
 {
     m_TypeNull = 0,
     m_TypeAnnounce
 };
+typedef enum m_type m_type;
 
 typedef struct m_header m_header;
 struct m_header
@@ -46,14 +46,12 @@ struct m_header
     u16 Version;
     u32 Type;
     u64 MessageID;
+    u128 PeerUUID;
 };
 
 typedef struct m_announce m_announce;
 struct m_announce
 {
-    m_header Header;
-    
-    u128 PeerUUID;
     // NOTE(luca): If this is greater than 0, than there are this number of strings following the message.
     u64 ServicesCount;
     s64 Timestamp;
@@ -105,7 +103,6 @@ m_Copy(u8 **CopyPointer, void *Data, umm Size)
 internal void 
 m_Send(server Server, str8 Message)
 {
-    
     smm BytesSent = sendto(Server.Handle, Message.Data, Message.Size, 
                            0, (struct sockaddr *)&Server.Address, sizeof(Server.Address));
     Assert(BytesSent != -1);
@@ -113,13 +110,14 @@ m_Send(server Server, str8 Message)
 }
 
 internal m_header
-m_Header(m_type Type, u64 ID)
+m_MakeHeader(m_type Type, u128 PeerUUID, u64 MessageID)
 {
     m_header Header = {0};
     
     Header.Version = GlobalVersion;
     Header.Type = Type;
-    Header.MessageID = ID;
+    Header.MessageID = MessageID;
+    Header.PeerUUID = PeerUUID;
     
     return Header;
 }
@@ -134,12 +132,15 @@ m_Announce(server Server,
 {
     m_announce Message = {0};
     
+    u16 Port = 2600;
+    
+    Server.Address.sin_addr.s_addr = inet_addr("224.0.0.26");
+    
     u64 MessageID = *ID;
     *ID += 1;
     
-    Message.Header = m_Header(m_TypeAnnounce, MessageID);
+    m_header Header = m_MakeHeader(m_TypeAnnounce, UUID, MessageID);
     
-    Message.PeerUUID = UUID;
     {
         struct timespec Counter;
         clock_gettime(CLOCK_REALTIME, &Counter);
@@ -147,21 +148,21 @@ m_Announce(server Server,
     }
     Message.ServicesCount = ServicesCount;
     
-    u8 *CopyPointer = Buffer.Data;
+    u8 *CopyPointerBase = Buffer.Data;
+    u8 *CopyPointer = CopyPointerBase;
+    
+    m_Copy(&CopyPointer, &Header, sizeof(Header)); 
     m_Copy(&CopyPointer, &Message, sizeof(Message));
     
-    umm TotalSize = sizeof(Message);
     for EachIndex(Idx, ServicesCount)
     {
         service Service = Services[Idx];
         
         m_Copy(&CopyPointer, &Service.Name.Size, sizeof(Service.Name.Size));
         m_Copy(&CopyPointer, Service.Name.Data, Service.Name.Size);
-        
-        TotalSize += sizeof(Services[Idx].Name.Size);
-        TotalSize += Services[Idx].Name.Size;
     }
     
+    umm TotalSize = CopyPointer - CopyPointerBase;
     Assert(TotalSize < Buffer.Size);
     
     m_Send(Server, S8To(Buffer, TotalSize));
