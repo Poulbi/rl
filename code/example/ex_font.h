@@ -151,40 +151,46 @@ DrawText(arena *Arena, app_offscreen_buffer *Buffer, app_font *Font,
          f32 HeightPixels,
          v2 Offset, b32 IsUTF8, u32 Color, str8 Text)
 {
-    Assert(Font->Initialized);
-    
-    Offset.X = roundf(Offset.X);
-    Offset.Y = roundf(Offset.Y);
-    
-    f32 FontScale = stbtt_ScaleForPixelHeight(&Font->Info, HeightPixels);
-    
-    for EachIndex(Idx, Text.Size)
-    {
-        rune CharAt = (IsUTF8 ? ((rune *)Text.Data)[Idx] : Text.Data[Idx]);
+    if(Font->Initialized)
+    {        
+        Offset.X = roundf(Offset.X);
+        Offset.Y = roundf(Offset.Y);
         
-        s32 FontWidth, FontHeight;
-        s32 AdvanceWidth, LeftSideBearing;
-        s32 X0, Y0, X1, Y1;
-        u8 *FontBitmap = 0;
-        stbtt_GetCodepointBitmapBox(&Font->Info, CharAt, 
-                                    FontScale, FontScale, 
-                                    &X0, &Y0, &X1, &Y1);
-        FontWidth = (X1 - X0);
-        FontHeight = (Y1 - Y0);
-        FontBitmap = PushArray(Arena, u8, (FontWidth*FontHeight));
-        stbtt_MakeCodepointBitmap(&Font->Info, FontBitmap, 
-                                  FontWidth, FontHeight, FontWidth, 
-                                  FontScale, FontScale, CharAt);
+        f32 FontScale = stbtt_ScaleForPixelHeight(&Font->Info, HeightPixels);
         
-        stbtt_GetCodepointHMetrics(&Font->Info, CharAt, &AdvanceWidth, &LeftSideBearing);
-        
-        s32 XOffset = floorf(Offset.X + LeftSideBearing*FontScale);
-        s32 YOffset = Offset.Y + Y0;
-        
-        DrawCharacter(Arena, Buffer, FontBitmap, FontWidth, FontHeight, XOffset, YOffset, Color);
-        
-        Offset.X += roundf(AdvanceWidth*FontScale);
+        for EachIndex(Idx, Text.Size)
+        {
+            rune CharAt = (IsUTF8 ? ((rune *)Text.Data)[Idx] : Text.Data[Idx]);
+            
+            s32 FontWidth, FontHeight;
+            s32 AdvanceWidth, LeftSideBearing;
+            s32 X0, Y0, X1, Y1;
+            u8 *FontBitmap = 0;
+            stbtt_GetCodepointBitmapBox(&Font->Info, CharAt, 
+                                        FontScale, FontScale, 
+                                        &X0, &Y0, &X1, &Y1);
+            FontWidth = (X1 - X0);
+            FontHeight = (Y1 - Y0);
+            FontBitmap = PushArray(Arena, u8, (FontWidth*FontHeight));
+            stbtt_MakeCodepointBitmap(&Font->Info, FontBitmap, 
+                                      FontWidth, FontHeight, FontWidth, 
+                                      FontScale, FontScale, CharAt);
+            
+            stbtt_GetCodepointHMetrics(&Font->Info, CharAt, &AdvanceWidth, &LeftSideBearing);
+            
+            s32 XOffset = floorf(Offset.X + LeftSideBearing*FontScale);
+            s32 YOffset = Offset.Y + Y0;
+            
+            DrawCharacter(Arena, Buffer, FontBitmap, FontWidth, FontHeight, XOffset, YOffset, Color);
+            
+            Offset.X += roundf(AdvanceWidth*FontScale);
+        }
     }
+    else
+    {
+        DebugBreak;
+    }
+    
 }
 
 // 1. First pass where we check each character's size.

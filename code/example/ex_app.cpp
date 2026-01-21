@@ -551,6 +551,7 @@ DrawButton(arena *Arena, v2 BufferDim, app_offscreen_buffer *TextImage,  app_fon
     }
     
     // Draw the text
+    if(Font->Initialized)
     {
         f32 HeightPx = (f32)(TextImage->Width/30);
         
