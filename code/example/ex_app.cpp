@@ -87,6 +87,27 @@ global_variable model_path Models[] =
 
 
 //~ Helpers
+typedef struct rect rect;
+struct rect
+{
+    v2 Min;
+    v2 Max;
+};
+
+internal inline rect
+ToClipSpace(v2 Min, v2 Max)
+{
+    rect Result = {};
+    v2 P = V2(1.0f, -1.0f);
+    V2Math
+    {
+        Result.Min.E = (((Min.E * 2.0f) - 1.0f) * P.E);
+        Result.Max.E = (((Max.E * 2.0f) - 1.0f) * P.E);
+    }
+    
+    return Result;
+}
+
 internal inline u32 *
 PixelFromBuffer(app_offscreen_buffer *Buffer, s32 X, s32 Y)
 {
@@ -540,10 +561,9 @@ DrawButton(arena *Arena, v2 BufferDim, app_offscreen_buffer *TextImage,  app_fon
     {    
         // TODO(luca): Use one big buffer
         
-        v2 ClipMin = V2MulV2(V2AddF32(V2MulF32(Button->Min, 2.0f), -1.0f), V2(1.0f, -1.0f));
-        v2 ClipMax = V2MulV2(V2AddF32(V2MulF32(Button->Max, 2.0f), -1.0f), V2(1.0f, -1.0f));
+        rect Clipped = ToClipSpace(Button->Min, Button->Max);
         
-        MakeQuadV3(Vertices, ClipMin, ClipMax, -1.0f);
+        MakeQuadV3(Vertices, Clipped.Min, Clipped.Max, -1.0f);
         SetProvokingV3(Colors, Color);
         SetProvokingV2(Minima, Button->Min);
         SetProvokingV2(Maxima, Button->Max);
@@ -971,8 +991,8 @@ UPDATE_AND_RENDER(UpdateAndRender)
             // Background for buttons
             {
                 v3 BackgroundColor = {U32ToV3Arg(0xFF5E81AC)};
-                v2 ClipMin = V2MulV2(V2AddF32(V2MulF32(BackgroundMin, 2.0f), -1.0f), V2(1.0f, -1.0f));
-                v2 ClipMax = V2MulV2(V2AddF32(V2MulF32(BackgroundMax, 2.0f), -1.0f), V2(1.0f, -1.0f));
+                
+                rect Clipped = ToClipSpace(BackgroundMin, BackgroundMax);
                 
                 umm OffsetIdx = 0*6;
                 v3 *Vertices = ButtonVertices + OffsetIdx;
@@ -981,7 +1001,7 @@ UPDATE_AND_RENDER(UpdateAndRender)
                 v2 *Maxima = ButtonMaxima + OffsetIdx;
                 f32 *Radii = ButtonRadii + OffsetIdx;
                 
-                MakeQuadV3(Vertices, ClipMin, ClipMax, -1.0f);
+                MakeQuadV3(Vertices, Clipped.Min, Clipped.Max, -1.0f);
                 SetProvokingV3(Colors, BackgroundColor);
                 SetProvokingV2(Minima, BackgroundMin);
                 SetProvokingV2(Maxima, BackgroundMax);
@@ -1091,7 +1111,10 @@ UPDATE_AND_RENDER(UpdateAndRender)
                 for EachIndex(Idx, Count) 
                 {
                     Vertices[Idx].Z = -1.0f;
-                    TexCoords[Idx] = V2MulF32(V2AddF32(V2(Vertices[Idx].X, Vertices[Idx].Y), 1.0f), 0.5f);
+                    V2Math
+                    {
+                        TexCoords[Idx].E = 0.5f*(Vertices[Idx].E + 1.0f);
+                    }
                     TexCoords[Idx].Y = (1.0f - TexCoords[Idx].Y);
                 }
                 

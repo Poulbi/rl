@@ -122,6 +122,14 @@ MakeQuadV3(v3 Quad[6], v2 Min, v2 Max, f32 Z)
     Quad[5] = {Max.X, Min.Y, Z}; // BR
 }
 
-
+#define E e[_VecMathIdx]
+#define V2Math for EachIndex(_VecMathIdx, 2)
+#define V3Math for EachIndex(_VecMathIdx, 3)
+/*
+v3 A = ;
+v3 B = ;
+v3 C = ;
+V3Math { C.e = A.e * B.e; } 
+*/
 
 #endif //EX_MATH_H
