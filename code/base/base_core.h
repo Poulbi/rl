@@ -323,45 +323,27 @@ struct range_s64
     s64 Max;
 };
 
-typedef struct v2 v2;
-struct v2
+typedef union v2 v2;
+union v2
 {
-    union
-    {
-        f32 e[2];
-        struct
-        {        
-            f32 X, Y;
-        };
-    };
+    f32 e[2];
+    struct { f32 X, Y; };
 };
 #define V2Arg(Value) Value.X, Value.Y
 
-typedef struct v3 v3;
-struct v3
+typedef union v3 v3;
+union v3
 {
-    union
-    {
-        f32 e[3];
-        struct
-        {
-            f32 X, Y, Z;
-        };
-    };
+    f32 e[3];
+    struct { f32 X, Y, Z; };
 };
 #define V3Arg(Value) Value.X, Value.Y, Value.Z
 
-typedef struct v4 v4;
-struct v4
+typedef union v4 v4;
+union v4
 {
-    union
-    {
-        f32 e[4];
-        struct
-        {
-            f32 X, Y, Z, W;
-        };
-    };
+    f32 e[4]; 
+    struct { f32 X, Y, Z, W; };
 };
 #define V4Arg(Value) Value.X, Value.Y, Value.Z, Value.W
 
