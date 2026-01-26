@@ -44,7 +44,7 @@ GLErrorInfo_(char *Name, char *FileName, s32 Line)
             case GL_INVALID_INDEX:                 String = "Invalid Index"; break; 
             case GL_INVALID_OPERATION:             String = "Invalid Operation"; break; 
             case GL_INVALID_VALUE:                 String = "Invalid Value"; break; 
-            default:                               String = "Unknown Error";
+            default:                               String = "Unknown Error"; break;
         }
         
         Log(ERROR_FMT " %s(%d): %s\n", FileName, Line, Name, ErrorCode, String);

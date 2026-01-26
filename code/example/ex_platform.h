@@ -146,6 +146,7 @@ struct app_code
     char *LibraryPath;
     umm LibraryHandle;
     b32 Loaded;
+    s64 LastWriteTime;
 };
 
 //~ API
@@ -154,7 +155,7 @@ typedef umm P_context;
 internal P_context P_ContextInit(arena *Arena, app_offscreen_buffer *Buffer, b32 *Running);
 internal void      P_UpdateImage(P_context Context, app_offscreen_buffer *Buffer);
 internal void      P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buffer, b32 *Running);
-internal void      P_LoadAppCode(arena *Arena, app_code *Code, app_memory *Memory, s64 *LastWriteTime);
+internal void      P_LoadAppCode(arena *Arena, app_code *Code, app_memory *Memory);
 
 //- Helpers 
 internal inline b32 

@@ -2,6 +2,14 @@
 
 #ifndef EX_MATH_H
 #define EX_MATH_H
+
+typedef struct rect rect;
+struct rect
+{
+    v2 Min;
+    v2 Max;
+};
+
 internal inline v2 
 V2AddV2(v2 A, v2 B)
 {
@@ -93,7 +101,7 @@ SET(F32, f32)
 
 #define SET(Name, type) \
 internal inline void \
-SetProvoking##Name(type Quad[6], type Value) \
+SetProvoking##Name(type *Quad, type Value) \
 { \
 Quad[2] = Value; Quad[5] = Value; \
 }
@@ -101,7 +109,7 @@ ProvokingFuncs
 #undef SET
 
 internal inline void
-MakeQuadV2(v2 Quad[6], v2 Min, v2 Max)
+MakeQuadV2(v2 *Quad, v2 Min, v2 Max)
 {
     Quad[0] = {Min.X, Min.Y}; // BL
     Quad[1] = {Max.X, Min.Y}; // BR
@@ -112,7 +120,7 @@ MakeQuadV2(v2 Quad[6], v2 Min, v2 Max)
 }
 
 internal inline void
-MakeQuadV3(v3 Quad[6], v2 Min, v2 Max, f32 Z)
+MakeQuadV3(v3 *Quad, v2 Min, v2 Max, f32 Z)
 {
     Quad[0] = {Min.X, Min.Y, Z}; // BL
     Quad[1] = {Max.X, Min.Y, Z}; // BR

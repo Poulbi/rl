@@ -368,7 +368,7 @@ P_ProcessMessages(P_context Context, app_input *Input, app_offscreen_buffer *Buf
 }
 
 internal void      
-P_LoadAppCode(arena *Arena, app_code *Code, app_memory *Memory, s64 *LastWriteTime)
+P_LoadAppCode(arena *Arena, app_code *Code, app_memory *Memory)
 {
     Code->UpdateAndRender = UpdateAndRender;
 }

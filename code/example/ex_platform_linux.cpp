@@ -756,22 +756,30 @@ P_UpdateImage(P_context Context, app_offscreen_buffer *Buffer)
 }
 
 internal void
-P_LoadAppCode(arena *Arena, app_code *Code, app_memory *Memory, s64 *LastWriteTime)
+P_LoadAppCode(arena *Arena, app_code *Code, app_memory *Memory)
 {
 	void *Library = (void *)(Code->LibraryHandle);
     struct stat Stats = {};
     stat(Code->LibraryPath, &Stats);
     umm Size = Stats.st_size;
     s64 CurrentWriteTime = LinuxTimeSpecToSeconds(Stats.st_mtim);
-    b32 WasWritten = (CurrentWriteTime != *LastWriteTime);
+    
+    // NOTE(luca): Compilers will write twice to the executable for I know what reason, this
+    // hack only detects the file as written to if it happened in over 100ms.
+    s64 TimeDiff = (CurrentWriteTime - Code->LastWriteTime);  
+    b32 WasWritten = (TimeDiff > (s64)(100 * 1000 * 1000));
     
     if(Size && (!Code->Loaded || WasWritten))
     {
-        *LastWriteTime = CurrentWriteTime;
+        Code->LastWriteTime = CurrentWriteTime;
         
-        if(Library && Code->Loaded)
+        if(Library)
         {
-            dlclose(Library);
+            s32 Error = dlclose(Library);
+            if(Error != 0)
+            {
+                ErrorLog("%s", dlerror());
+            }
         }
         
         Library = dlopen(Code->LibraryPath, RTLD_NOW);

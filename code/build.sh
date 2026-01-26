@@ -32,13 +32,14 @@ sort=0
 gl=0
 windows=0
 droid=0
+game=0
 
 cling=0
 rldroid=0
 Targets="hash/samples/cling/rldroid/cuversine/zcdp/example [sort/app/gl/windows/droid]"
 
 # Default
-[ "$#" = 0 ] && zcdp=1
+[ "$#" = 0 ] && example=1 && game=1
 
 for Arg in "$@"; do eval "$Arg=1"; done
 # Exclusive flags
@@ -193,12 +194,11 @@ AppCompile()
  AppDir="./example"
 
  Dir="${1:-}"
- ExtraFlags="${2:-}"
+ ExtraFlags="-I $AppDir ${2:-}"
 
  AppFlags="-fPIC --shared" 
 
  LibsFile="../build/ex_libs.o"
-
 
  # Faster compilation times by compiling all libraries in a separate translation unit.
  if [ "$slow" = 0 ]
@@ -206,8 +206,8 @@ AppCompile()
 		# If libsfile does not exist or
 		# If compiling with asan but libsfile does not contain asan
 		# If compiling without asan but libsfile contains asan
-		if  { { [ "$asan" = 0 ] && nm "$LibsFile" | grep 'asan' > /dev/null; } ||
-						  { [ "$asan" = 1 ] && ! nm "$LibsFile" | grep 'asan' > /dev/null; } ||
+		if  { { [ "$asan" = 0 ] && nm "$LibsFile" 2>/dev/null | grep 'asan' > /dev/null; } ||
+						  { [ "$asan" = 1 ] && ! nm "$LibsFile" 2>/dev/null | grep 'asan' > /dev/null; } ||
 						  [ ! -f "$LibsFile" ]; }
 		then
    C_Compile "$AppDir"/ex_libs.h "$LibsFile" "-fPIC -x c++ -c -DEX_SLOW_COMPILE=1 -Wno-unused-command-line-argument"
@@ -224,11 +224,12 @@ then
  [ "$app"  = 1 ] && AppCompile
  [ "$sort" = 1 ] && AppCompile sort/ "-DEX_FORCE_X11=1"
  [ "$gl"   = 1 ] && AppCompile gl/
-	if [ "$windows" = 1 ]
-	then
-		printf 'call C:\BuildTools\devcmd.bat\ncall build.bat\n' | wine cmd.exe 2>/dev/null
-		DidWork=1
-	fi
+ [ "$game" = 1 ] && AppCompile game/
+ if [ "$windows" = 1 ]
+ then
+  printf 'call C:\BuildTools\devcmd.bat\ncall build.bat\n' | wine cmd.exe 2>/dev/null
+  DidWork=1
+ fi
  if [ "$droid" = 1 ]
  then
   cd ./lib/rawdrawandroid/

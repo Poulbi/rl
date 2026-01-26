@@ -23,8 +23,8 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
         *Running = true;
         
         app_offscreen_buffer Buffer = {};
-        Buffer.Width = 960;
-        Buffer.Height = 960;
+        Buffer.Width = 1920/2;
+        Buffer.Height = 1080/2;
         Buffer.BytesPerPixel = 4;
         Buffer.Pitch = Buffer.BytesPerPixel*Buffer.Width;
         Buffer.Pixels = PushArray(PermanentArena, u8, Buffer.Pitch*Buffer.Height);
@@ -79,9 +79,8 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
 #endif
         f32 TargetSecondsPerFrame = 1.0f/GameUpdateHz; 
         
-        app_code Code = {};
+        app_code Code = ZeroStruct;
         
-        s64 LastWriteTime = ZeroStruct;
 #if OS_LINUX || OS_ANDROID        
         str8 LibraryPath = S8("ex_app.so");
 #else
@@ -109,7 +108,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             
             OS_ProfileAndPrint("InitSetup");
             
-            P_LoadAppCode(FrameArena, &Code, &AppMemory, &LastWriteTime);
+            P_LoadAppCode(FrameArena, &Code, &AppMemory);
             OS_ProfileAndPrint("Code");
             
             P_ProcessMessages(PlatformContext, NewInput, &Buffer, Running);
@@ -167,9 +166,7 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
                     // TODO(luca): Log missed frame rate!
                 }
                 
-                s64 EndCounter = OS_GetWallClock();
-                
-                LastCounter = EndCounter;
+                LastCounter = OS_GetWallClock();
             }
             
             NewInput->Text.Buffer[NewInput->Text.Count].Codepoint = 0;
@@ -182,7 +179,6 @@ C_LINKAGE ENTRY_POINT(EntryPoint)
             Swap(OldInput, NewInput);
             
             OS_ProfileAndPrint("Sleep");
-            
             
             u8 Codepoint = (u8)NewInput->Text.Buffer[0].Codepoint;
             
